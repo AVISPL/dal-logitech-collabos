@@ -21,5 +21,6 @@ public class LogitechConstant {
 	public static final String SERVICE_PROVIDER = "serviceProvider";
 	public static final String SYSTEM_NAME = "systemName";
 	public static final String WIFI_MAC = "wifiMAC";
+	public static final String NONE = "None";
 
 }

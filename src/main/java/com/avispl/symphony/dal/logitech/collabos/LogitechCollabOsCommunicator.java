@@ -140,20 +140,30 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 			JsonNode response = doGet("/api/v1/device", JsonNode.class);
 			if (response != null && !response.get("code").isNull() && 200 == response.get("code").intValue() && !response.get("result").isEmpty()) {
 				JsonNode results = response.get("result");
-				stats.put(capitalizeFirstLetter(LogitechConstant.DEVICE_NAME), results.get(LogitechConstant.DEVICE_NAME).textValue());
-				stats.put(capitalizeFirstLetter(LogitechConstant.COLLAB_OS_VERSION), results.get(LogitechConstant.COLLAB_OS_VERSION).textValue());
-				stats.put(capitalizeFirstLetter(LogitechConstant.ETHERNET_MAC), results.get(LogitechConstant.ETHERNET_MAC).textValue());
-				stats.put(capitalizeFirstLetter(LogitechConstant.HW_VERSION), results.get(LogitechConstant.HW_VERSION).textValue());
-				stats.put(capitalizeFirstLetter(LogitechConstant.MODEL_NAME), results.get(LogitechConstant.MODEL_NAME).textValue());
-				stats.put(capitalizeFirstLetter(LogitechConstant.SERIAL_NUMBER), results.get(LogitechConstant.SERIAL_NUMBER).textValue());
-				stats.put(capitalizeFirstLetter(LogitechConstant.SYSTEM_NAME), results.get(LogitechConstant.SYSTEM_NAME).textValue());
-				stats.put(capitalizeFirstLetter(LogitechConstant.SERVICE_PROVIDER), results.get(LogitechConstant.SERVICE_PROVIDER).textValue());
-				stats.put(capitalizeFirstLetter(LogitechConstant.ETHERNET_MAC), results.get(LogitechConstant.ETHERNET_MAC).textValue());
-				stats.put(capitalizeFirstLetter(LogitechConstant.WIFI_MAC), results.get(LogitechConstant.WIFI_MAC).textValue());
+				stats.put(capitalizeFirstLetter(LogitechConstant.DEVICE_NAME), checkNullOrEmptyValue(results.get(LogitechConstant.DEVICE_NAME)));
+				stats.put(capitalizeFirstLetter(LogitechConstant.COLLAB_OS_VERSION), checkNullOrEmptyValue(results.get(LogitechConstant.COLLAB_OS_VERSION)));
+				stats.put(capitalizeFirstLetter(LogitechConstant.ETHERNET_MAC), checkNullOrEmptyValue(results.get(LogitechConstant.ETHERNET_MAC)));
+				stats.put(capitalizeFirstLetter(LogitechConstant.HW_VERSION), checkNullOrEmptyValue(results.get(LogitechConstant.HW_VERSION)));
+				stats.put(capitalizeFirstLetter(LogitechConstant.MODEL_NAME), checkNullOrEmptyValue(results.get(LogitechConstant.MODEL_NAME)));
+				stats.put(capitalizeFirstLetter(LogitechConstant.SERIAL_NUMBER), checkNullOrEmptyValue(results.get(LogitechConstant.SERIAL_NUMBER)));
+				stats.put(capitalizeFirstLetter(LogitechConstant.SYSTEM_NAME), checkNullOrEmptyValue(results.get(LogitechConstant.SYSTEM_NAME)));
+				stats.put(capitalizeFirstLetter(LogitechConstant.SERVICE_PROVIDER), checkNullOrEmptyValue(results.get(LogitechConstant.SERVICE_PROVIDER)));
+				stats.put(capitalizeFirstLetter(LogitechConstant.ETHERNET_MAC), checkNullOrEmptyValue(results.get(LogitechConstant.ETHERNET_MAC)));
+				stats.put(capitalizeFirstLetter(LogitechConstant.WIFI_MAC), checkNullOrEmptyValue(results.get(LogitechConstant.WIFI_MAC)));
 			}
 		} catch (Exception e) {
 			throw new ResourceNotReachableException("Error while retrieving monitoring data from device", e);
 		}
+	}
+
+	/**
+	 * Check null value
+	 *
+	 * @param value the value is JsonNode value
+	 * @return String / None if value is empty
+	 */
+	private String checkNullOrEmptyValue(JsonNode value) {
+		return value == null || StringUtils.isNullOrEmpty(value.textValue()) ? LogitechConstant.NONE : value.asText();
 	}
 
 	/**
