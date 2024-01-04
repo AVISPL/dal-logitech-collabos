@@ -3,6 +3,10 @@
  */
 package com.avispl.symphony.dal.logitech.collabos;
 
+import java.net.ConnectException;
+import java.net.Socket;
+import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -96,6 +100,52 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	@Override
 	protected void authenticate() throws Exception {
 		// The device no require authenticate
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * <p>
+	 *
+	 * Check for available devices before retrieving the value
+	 * ping latency information to Symphony
+	 */
+	@Override
+	public int ping() throws Exception {
+		if (isInitialized()) {
+			long pingResultTotal = 0L;
+
+			for (int i = 0; i < this.getPingAttempts(); i++) {
+				long startTime = System.currentTimeMillis();
+
+				try (Socket puSocketConnection = new Socket(this.host, this.getPort())) {
+					puSocketConnection.setSoTimeout(this.getPingTimeout());
+					if (puSocketConnection.isConnected()) {
+						long pingResult = System.currentTimeMillis() - startTime;
+						pingResultTotal += pingResult;
+						if (this.logger.isTraceEnabled()) {
+							this.logger.trace(String.format("PING OK: Attempt #%s to connect to %s on port %s succeeded in %s ms", i + 1, host, this.getPort(), pingResult));
+						}
+					} else {
+						if (this.logger.isDebugEnabled()) {
+							logger.debug(String.format("PING DISCONNECTED: Connection to %s did not succeed within the timeout period of %sms", host, this.getPingTimeout()));
+						}
+						return this.getPingTimeout();
+					}
+				} catch (SocketTimeoutException | ConnectException tex) {
+					throw new SocketTimeoutException("Socket connection timed out");
+				} catch (UnknownHostException tex) {
+					throw new SocketTimeoutException("Socket connection timed out" + tex.getMessage());
+				} catch (Exception e) {
+					if (this.logger.isWarnEnabled()) {
+						this.logger.warn(String.format("PING TIMEOUT: Connection to %s did not succeed, UNKNOWN ERROR %s: ", host, e.getMessage()));
+					}
+					return this.getPingTimeout();
+				}
+			}
+			return Math.max(1, Math.toIntExact(pingResultTotal / this.getPingAttempts()));
+		} else {
+			throw new IllegalStateException("Cannot use device class without calling init() first");
+		}
 	}
 
 	/**
