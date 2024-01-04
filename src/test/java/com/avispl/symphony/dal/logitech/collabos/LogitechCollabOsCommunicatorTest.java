@@ -65,7 +65,7 @@ public class LogitechCollabOsCommunicatorTest {
 	void testGetDeviceInfo() throws Exception {
 		extendedStatistic = (ExtendedStatistics) logitechCollabOsCommunicator.getMultipleStatistics().get(0);
 		Map<String, String> stats = extendedStatistic.getStatistics();
-		Assertions.assertEquals(9, stats.size());
+		Assertions.assertEquals(10, stats.size());
 
 		Assertions.assertEquals("RoomMate", stats.get("DeviceName"));
 		Assertions.assertEquals("1.11.181", stats.get("CollabOSVersion"));
@@ -76,6 +76,7 @@ public class LogitechCollabOsCommunicatorTest {
 		Assertions.assertEquals("RoomMate-GM2P92", stats.get("SystemName"));
 		Assertions.assertEquals("MTR", stats.get("ServiceProvider"));
 		Assertions.assertEquals("44:73:d6:ad:e6:0e", stats.get("WifiMAC"));
+		Assertions.assertEquals("HOST", stats.get("DeviceConfiguration"));
 	}
 
 	/**

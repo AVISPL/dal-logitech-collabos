@@ -150,6 +150,7 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 				stats.put(capitalizeFirstLetter(LogitechConstant.SERVICE_PROVIDER), checkNullOrEmptyValue(results.get(LogitechConstant.SERVICE_PROVIDER)));
 				stats.put(capitalizeFirstLetter(LogitechConstant.ETHERNET_MAC), checkNullOrEmptyValue(results.get(LogitechConstant.ETHERNET_MAC)));
 				stats.put(capitalizeFirstLetter(LogitechConstant.WIFI_MAC), checkNullOrEmptyValue(results.get(LogitechConstant.WIFI_MAC)));
+				stats.put(capitalizeFirstLetter(LogitechConstant.DEVICE_CONFIGURATION), checkNullOrEmptyValue(results.get(LogitechConstant.DEVICE_CONFIGURATION)));
 			}
 		} catch (Exception e) {
 			throw new ResourceNotReachableException("Error while retrieving monitoring data from device", e);
