@@ -174,9 +174,9 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 				token = response.get("result").get("auth_token").asText();
 				return;
 			}
-			throw new FailedLoginException(String.format("Error while get token with username: %s and password: %s", this.getLogin(), this.getPassword()));
+			throw new FailedLoginException("Error while get token");
 		} catch (Exception e) {
-			throw new FailedLoginException(String.format("Login fail, Error while get token with username: %s and password: %s", this.getLogin(), this.getPassword()));
+			throw new FailedLoginException("Login fail. Please check the credentials");
 		}
 	}
 
