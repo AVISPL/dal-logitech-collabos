@@ -48,7 +48,7 @@ import com.avispl.symphony.dal.util.StringUtils;
  *
  * @author Kevin / Symphony Dev Team<br>
  * Created on 1/3/2024
- * @since 1.0.1
+ * @since 1.0.0
  */
 public class LogitechCollabOsCommunicator extends RestCommunicator implements Monitorable {
 	/**

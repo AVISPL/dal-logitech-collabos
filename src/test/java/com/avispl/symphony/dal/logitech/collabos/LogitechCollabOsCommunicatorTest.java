@@ -23,7 +23,7 @@ import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
  *
  * @author Kevin / Symphony Dev Team<br>
  * Created on 1/3/2024
- * @since 1.0.1
+ * @since 1.0.0
  */
 @Tag("Mock")
 public class LogitechCollabOsCommunicatorTest {
