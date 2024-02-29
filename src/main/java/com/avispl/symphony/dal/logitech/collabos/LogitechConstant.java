@@ -8,7 +8,7 @@ package com.avispl.symphony.dal.logitech.collabos;
  *
  * @author Kevin / Symphony Dev Team<br>
  * Created on 1/3/2024
- * @since 1.0.0
+ * @since 1.0.1
  */
 public class LogitechConstant {
 
