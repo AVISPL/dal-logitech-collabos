@@ -3,6 +3,7 @@
  */
 package com.avispl.symphony.dal.logitech.collabos;
 
+import java.lang.reflect.Method;
 import java.net.ConnectException;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
@@ -24,6 +25,10 @@ import com.avispl.symphony.api.dal.dto.monitor.Statistics;
 import com.avispl.symphony.api.dal.error.ResourceNotReachableException;
 import com.avispl.symphony.api.dal.monitor.Monitorable;
 import com.avispl.symphony.dal.communicator.RestCommunicator;
+import com.avispl.symphony.dal.logitech.collabos.common.DeviceInfo;
+import com.avispl.symphony.dal.logitech.collabos.common.LogitechConstant;
+import com.avispl.symphony.dal.logitech.collabos.common.PeripheralType;
+import com.avispl.symphony.dal.logitech.collabos.common.PingMode;
 import com.avispl.symphony.dal.util.StringUtils;
 
 /**
@@ -69,6 +74,49 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	private String token;
 
 	/**
+	 * save time get token
+	 */
+	private Long tokenExpire;
+
+	/**
+	 * time the token expires
+	 */
+	private Long expiresIn = 23 * 3600L * 1000;
+
+	/**
+	 * failed monitor
+	 */
+	int failedMonitor = 0;
+
+	/**
+	 * cached data
+	 */
+	private Map<String, String> cachedData = new HashMap<>();
+
+	/**
+	 * ping mode
+	 */
+	private PingMode pingMode = PingMode.ICMP;
+
+	/**
+	 * Retrieves {@link #pingMode}
+	 *
+	 * @return value of {@link #pingMode}
+	 */
+	public String getPingMode() {
+		return pingMode.name();
+	}
+
+	/**
+	 * Sets {@link #pingMode} value
+	 *
+	 * @param pingMode new value of {@link #pingMode}
+	 */
+	public void setPingMode(String pingMode) {
+		this.pingMode = PingMode.ofString(pingMode);
+	}
+
+	/**
 	 * Constructor instance
 	 */
 	public LogitechCollabOsCommunicator() {
@@ -83,10 +131,19 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	 */
 	@Override
 	public List<Statistics> getMultipleStatistics() throws Exception {
+		checkValidApiToken();
 		ExtendedStatistics extendedStatistics = new ExtendedStatistics();
 		Map<String, String> stats = new HashMap<>();
-		getTokenAPI();
-		retrieveMonitoringData(stats);
+		cachedData.clear();
+		failedMonitor = 0;
+		retrieveDeviceInfo();
+		retrieveRoomSightsData();
+		retrievePeripheralsData();
+		if (failedMonitor == 3) {
+			throw new ResourceNotReachableException("Failed all command. Please double-check the requests");
+		}
+		populateDeviceInfoAndRoomInsightData(stats);
+		populatePeripheralData(stats);
 		extendedStatistics.setStatistics(stats);
 
 		localExtendedStatistics = extendedStatistics;
@@ -111,41 +168,73 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	 */
 	@Override
 	public int ping() throws Exception {
-		if (isInitialized()) {
-			long pingResultTotal = 0L;
+		if (this.pingMode == PingMode.ICMP) {
+			return super.ping();
+		} else if (this.pingMode == PingMode.TCP) {
+			if (isInitialized()) {
+				long pingResultTotal = 0L;
 
-			for (int i = 0; i < this.getPingAttempts(); i++) {
-				long startTime = System.currentTimeMillis();
+				for (int i = 0; i < this.getPingAttempts(); i++) {
+					long startTime = System.currentTimeMillis();
 
-				try (Socket puSocketConnection = new Socket(this.host, this.getPort())) {
-					puSocketConnection.setSoTimeout(this.getPingTimeout());
-					if (puSocketConnection.isConnected()) {
-						long pingResult = System.currentTimeMillis() - startTime;
-						pingResultTotal += pingResult;
-						if (this.logger.isTraceEnabled()) {
-							this.logger.trace(String.format("PING OK: Attempt #%s to connect to %s on port %s succeeded in %s ms", i + 1, host, this.getPort(), pingResult));
+					try (Socket puSocketConnection = new Socket(this.host, this.getPort())) {
+						puSocketConnection.setSoTimeout(this.getPingTimeout());
+						if (puSocketConnection.isConnected()) {
+							long pingResult = System.currentTimeMillis() - startTime;
+							pingResultTotal += pingResult;
+							if (this.logger.isTraceEnabled()) {
+								this.logger.trace(String.format("PING OK: Attempt #%s to connect to %s on port %s succeeded in %s ms", i + 1, host, this.getPort(), pingResult));
+							}
+						} else {
+							if (this.logger.isDebugEnabled()) {
+								this.logger.debug(String.format("PING DISCONNECTED: Connection to %s did not succeed within the timeout period of %sms", host, this.getPingTimeout()));
+							}
+							return this.getPingTimeout();
 						}
-					} else {
-						if (this.logger.isDebugEnabled()) {
-							logger.debug(String.format("PING DISCONNECTED: Connection to %s did not succeed within the timeout period of %sms", host, this.getPingTimeout()));
+					} catch (SocketTimeoutException | ConnectException tex) {
+						throw new RuntimeException("Socket connection timed out", tex);
+					} catch (UnknownHostException ex) {
+						throw new UnknownHostException(String.format("Connection timed out, UNKNOWN host %s", host));
+					} catch (Exception e) {
+						if (this.logger.isWarnEnabled()) {
+							this.logger.warn(String.format("PING TIMEOUT: Connection to %s did not succeed, UNKNOWN ERROR %s: ", host, e.getMessage()));
 						}
 						return this.getPingTimeout();
 					}
-				} catch (SocketTimeoutException | ConnectException tex) {
-					throw new SocketTimeoutException("Socket connection timed out");
-				} catch (UnknownHostException tex) {
-					throw new SocketTimeoutException("Socket connection timed out" + tex.getMessage());
-				} catch (Exception e) {
-					if (this.logger.isWarnEnabled()) {
-						this.logger.warn(String.format("PING TIMEOUT: Connection to %s did not succeed, UNKNOWN ERROR %s: ", host, e.getMessage()));
-					}
-					return this.getPingTimeout();
 				}
+				return Math.max(1, Math.toIntExact(pingResultTotal / this.getPingAttempts()));
+			} else {
+				throw new IllegalStateException("Cannot use device class without calling init() first");
 			}
-			return Math.max(1, Math.toIntExact(pingResultTotal / this.getPingAttempts()));
 		} else {
-			throw new IllegalStateException("Cannot use device class without calling init() first");
+			throw new IllegalArgumentException("Unknown PING Mode: " + pingMode);
 		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	protected void internalInit() throws Exception {
+		if (logger.isDebugEnabled()) {
+			logger.debug("Internal init is called.");
+		}
+		super.internalInit();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	protected void internalDestroy() {
+		if (localExtendedStatistics != null && localExtendedStatistics.getStatistics() != null && localExtendedStatistics.getControllableProperties() != null) {
+			localExtendedStatistics.getStatistics().clear();
+			localExtendedStatistics.getControllableProperties().clear();
+		}
+		if (!cachedData.isEmpty()) {
+			cachedData.clear();
+		}
+		super.internalDestroy();
 	}
 
 	/**
@@ -160,19 +249,35 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	}
 
 	/**
+	 * Check API token validation
+	 * If the token expires, we send a request to get a new token
+	 *
+	 * @return boolean
+	 */
+	private boolean checkValidApiToken() throws Exception {
+		if (StringUtils.isNullOrEmpty(getLogin()) || StringUtils.isNullOrEmpty(getPassword())) {
+			return false;
+		}
+		if (StringUtils.isNullOrEmpty(token) || System.currentTimeMillis() - tokenExpire >= expiresIn) {
+			token = getTokenAPI();
+		}
+		return StringUtils.isNotNullOrEmpty(token);
+	}
+
+	/**
 	 * Get token api from the device
 	 *
 	 * @throws FailedLoginException if login fail
 	 */
-	private void getTokenAPI() throws FailedLoginException {
+	private String getTokenAPI() throws FailedLoginException {
 		try {
 			Map<String, String> payload = new HashMap<>();
-			payload.put("username", this.getLogin());
-			payload.put("password", this.getPassword());
+			payload.put(LogitechConstant.USERNAME, this.getLogin());
+			payload.put(LogitechConstant.PASSWORD, this.getPassword());
 			JsonNode response = doPost("api/v1/signin", objectMapper.writeValueAsString(payload), JsonNode.class);
-			if (response != null && !response.get("code").isNull() && 200 == response.get("code").intValue() && !response.get("result").isEmpty()) {
-				token = response.get("result").get("auth_token").asText();
-				return;
+			if (response != null && !response.get(LogitechConstant.CODE).isNull() && 200 == response.get(LogitechConstant.CODE).intValue() && !response.get(LogitechConstant.RESULT).isEmpty()) {
+				tokenExpire = System.currentTimeMillis();
+				return response.get(LogitechConstant.RESULT).get("auth_token").asText();
 			}
 			throw new FailedLoginException("Error while get token");
 		} catch (Exception e) {
@@ -182,28 +287,132 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 
 	/**
 	 * Retrieve monitoring data of the device
-	 *
-	 * @param stats the stats are list of Statistics
 	 */
-	private void retrieveMonitoringData(Map<String, String> stats) {
+	private void retrieveDeviceInfo() {
 		try {
-			JsonNode response = doGet("/api/v1/device", JsonNode.class);
-			if (response != null && !response.get("code").isNull() && 200 == response.get("code").intValue() && !response.get("result").isEmpty()) {
-				JsonNode results = response.get("result");
-				stats.put(capitalizeFirstLetter(LogitechConstant.DEVICE_NAME), checkNullOrEmptyValue(results.get(LogitechConstant.DEVICE_NAME)));
-				stats.put(capitalizeFirstLetter(LogitechConstant.COLLAB_OS_VERSION), checkNullOrEmptyValue(results.get(LogitechConstant.COLLAB_OS_VERSION)));
-				stats.put(capitalizeFirstLetter(LogitechConstant.ETHERNET_MAC), checkNullOrEmptyValue(results.get(LogitechConstant.ETHERNET_MAC)));
-				stats.put(capitalizeFirstLetter(LogitechConstant.HW_VERSION), checkNullOrEmptyValue(results.get(LogitechConstant.HW_VERSION)));
-				stats.put(capitalizeFirstLetter(LogitechConstant.MODEL_NAME), checkNullOrEmptyValue(results.get(LogitechConstant.MODEL_NAME)));
-				stats.put(capitalizeFirstLetter(LogitechConstant.SERIAL_NUMBER), checkNullOrEmptyValue(results.get(LogitechConstant.SERIAL_NUMBER)));
-				stats.put(capitalizeFirstLetter(LogitechConstant.SYSTEM_NAME), checkNullOrEmptyValue(results.get(LogitechConstant.SYSTEM_NAME)));
-				stats.put(capitalizeFirstLetter(LogitechConstant.SERVICE_PROVIDER), checkNullOrEmptyValue(results.get(LogitechConstant.SERVICE_PROVIDER)));
-				stats.put(capitalizeFirstLetter(LogitechConstant.ETHERNET_MAC), checkNullOrEmptyValue(results.get(LogitechConstant.ETHERNET_MAC)));
-				stats.put(capitalizeFirstLetter(LogitechConstant.WIFI_MAC), checkNullOrEmptyValue(results.get(LogitechConstant.WIFI_MAC)));
-				stats.put(capitalizeFirstLetter(LogitechConstant.DEVICE_CONFIGURATION), checkNullOrEmptyValue(results.get(LogitechConstant.DEVICE_CONFIGURATION)));
+			JsonNode response = doGet("api/v1/device", JsonNode.class);
+			if (response != null && !response.get(LogitechConstant.CODE).isNull() && 200 == response.get(LogitechConstant.CODE).intValue() && response.has(LogitechConstant.RESULT)) {
+				JsonNode results = response.get(LogitechConstant.RESULT);
+				for (DeviceInfo item : DeviceInfo.values()) {
+					cachedData.put(capitalizeFirstLetter(item.getName()), checkNullOrEmptyValue(results.get(item.getName())));
+				}
 			}
 		} catch (Exception e) {
-			throw new ResourceNotReachableException("Error while retrieving monitoring data from device", e);
+			failedMonitor++;
+			logger.error("Error while retrieving device info data from device", e);
+		}
+	}
+
+	/**
+	 * Retrieves room sights data from the device.
+	 */
+	private void retrieveRoomSightsData() {
+		try {
+			JsonNode response = doGet("api/v1/insights/room", JsonNode.class);
+			if (response != null && !response.get(LogitechConstant.CODE).isNull() && 200 == response.get(LogitechConstant.CODE).intValue() && response.has(LogitechConstant.RESULT)) {
+				JsonNode results = response.get(LogitechConstant.RESULT);
+				cachedData.put(capitalizeFirstLetter(LogitechConstant.OCCUPANCY_COUNT), getDefaultValueForNullData(results.get(LogitechConstant.OCCUPANCY_COUNT).asText()));
+				cachedData.put(capitalizeFirstLetter(LogitechConstant.OCCUPANCY_MODE), getDefaultValueForNullData(results.get(LogitechConstant.OCCUPANCY_MODE).asText()));
+			}
+		} catch (Exception e) {
+			failedMonitor++;
+			logger.error("Error while retrieving room insights data from device", e);
+		}
+	}
+
+	/**
+	 * Retrieves room peripheral data from the device.
+	 */
+	private void retrievePeripheralsData() {
+		try {
+			JsonNode response = doGet("api/v1/peripherals", JsonNode.class);
+			if (response != null && !response.get(LogitechConstant.CODE).isNull() && 200 == response.get(LogitechConstant.CODE).intValue() && response.has(LogitechConstant.RESULT)) {
+				JsonNode results = response.get(LogitechConstant.RESULT);
+				for (PeripheralType item : PeripheralType.values()) {
+					if (results.has(item.getValue())) {
+						cachedData.put(item.getName(), results.get(item.getValue()).toString());
+					}
+				}
+			}
+		} catch (Exception e) {
+			failedMonitor++;
+			logger.error("Error while retrieving peripherals data from device", e);
+		}
+	}
+
+	/**
+	 * Populates device info and room insight data into the given stats map.
+	 *
+	 * @param stats The map to populate with device and room insight data.
+	 */
+	private void populateDeviceInfoAndRoomInsightData(Map<String, String> stats) {
+		for (DeviceInfo item : DeviceInfo.values()) {
+			String propertyName = capitalizeFirstLetter(item.getName());
+			stats.put(propertyName, getDefaultValueForNullData(cachedData.get(propertyName)));
+		}
+		if (cachedData.get(capitalizeFirstLetter(LogitechConstant.OCCUPANCY_COUNT)) != null) {
+			stats.put("RoomInsights#OccupancyCount", getDefaultValueForNullData(cachedData.get("OccupancyCount")));
+		}
+
+		if (cachedData.get(capitalizeFirstLetter(LogitechConstant.OCCUPANCY_MODE)) != null) {
+			stats.put("RoomInsights#OccupancyMode", getDefaultValueForNullData(cachedData.get("OccupancyMode")));
+		}
+	}
+
+	/**
+	 * Populates peripheral data into the given stats map.
+	 *
+	 * @param stats The map to populate with peripheral data.
+	 */
+	private void populatePeripheralData(Map<String, String> stats) {
+		for (PeripheralType type : PeripheralType.values()) {
+			String name = type.getName();
+			String value = getDefaultValueForNullData(cachedData.get(name));
+			Class<? extends Enum<?>> enumClass = type.getEnumClass();
+			JsonNode data = convertStringToJson(value);
+			if (data != null && data.isArray()) {
+				int index = 1;
+				for (JsonNode item : data) {
+					String group = name + (data.size() == 1 ? "" : String.valueOf(index)) + "#";
+					populateStats(stats, group, enumClass, item);
+					index++;
+				}
+			}
+		}
+	}
+
+	/**
+	 * Populates stats map with data extracted from the given JsonNode based on the provided enum class.
+	 * Adds the extracted data to the stats map with the specified group prefix.
+	 * @param stats The map to populate with data.
+	 * @param group The prefix for the keys in the stats map.
+	 * @param enumClass The enum class representing the properties to extract from the JsonNode.
+	 * @param item The JsonNode containing the data to extract.
+	 */
+	private void populateStats(Map<String, String> stats, String group, Class<? extends Enum<?>> enumClass, JsonNode item) {
+		for (Enum<?> property : enumClass.getEnumConstants()) {
+			try {
+				Method methodName = property.getClass().getMethod("getName");
+				String nameMetric = (String) methodName.invoke(property);
+				if (item.get(nameMetric) != null) {
+					stats.put(group + capitalizeFirstLetter(nameMetric), item.get(nameMetric).asText());
+				}
+			} catch (Exception e) {
+				logger.error("Error when populate peripheral data", e);
+			}
+		}
+	}
+
+	/**
+	 * Converts the given JSON string to a JsonNode.
+	 * @param data The JSON string to convert.
+	 * @return The JsonNode representing the converted JSON data, or null if conversion fails.
+	 */
+	private JsonNode convertStringToJson(String data) {
+		try {
+			return objectMapper.readTree(data);
+		} catch (Exception e) {
+			return null;
 		}
 	}
 
@@ -214,7 +423,17 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	 * @return String / None if value is empty
 	 */
 	private String checkNullOrEmptyValue(JsonNode value) {
-		return value == null || StringUtils.isNullOrEmpty(value.textValue()) ? LogitechConstant.NONE : value.asText();
+		return value == null || StringUtils.isNullOrEmpty(value.asText()) ? LogitechConstant.NONE : value.asText();
+	}
+
+	/**
+	 * check value is null or empty
+	 *
+	 * @param value input value
+	 * @return value after checking
+	 */
+	private String getDefaultValueForNullData(String value) {
+		return StringUtils.isNotNullOrEmpty(value) ? value : LogitechConstant.NONE;
 	}
 
 	/**
