@@ -5,7 +5,7 @@
 package com.avispl.symphony.dal.logitech.collabos.common.metric;
 
 /**
- * USBControllerEnum
+ * Enum representing USB Controllers (TAP USB) attributes.
  *
  * @author Harry / Symphony Dev Team<br>
  * Created on 5/9/2024

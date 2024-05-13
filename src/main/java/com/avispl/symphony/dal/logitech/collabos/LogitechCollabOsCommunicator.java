@@ -81,7 +81,7 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	/**
 	 * time the token expires
 	 */
-	private Long expiresIn = 23 * 3600L * 1000;
+	private Long expiresIn = 12 * 3600L * 1000;
 
 	/**
 	 * failed monitor

@@ -5,7 +5,7 @@
 package com.avispl.symphony.dal.logitech.collabos.common.metric;
 
 /**
- * RemoteEnum
+ * Enum representing Paired Remotes attributes.
  *
  * @author Harry / Symphony Dev Team<br>
  * Created on 5/9/2024
