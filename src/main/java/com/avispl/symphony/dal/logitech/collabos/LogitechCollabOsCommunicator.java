@@ -86,7 +86,7 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	/**
 	 * failed monitor
 	 */
-	int failedMonitor = 0;
+	private int failedMonitor = 0;
 
 	/**
 	 * cached data
