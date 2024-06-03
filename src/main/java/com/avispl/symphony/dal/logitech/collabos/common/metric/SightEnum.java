@@ -12,16 +12,23 @@ package com.avispl.symphony.dal.logitech.collabos.common.metric;
  * @since 1.1.0
  */
 public enum SightEnum {
-	ID("id"),
-	CAMERA_CONNECTED("cameraConnected"),
-	MICROPHONE_CONNECTED("microphoneConnected"),
-	FIRMWARE_VERSION("firmwareVersion"),
+	ID("id", "ID"),
+	CAMERA_CONNECTED("cameraConnected", "CameraConnected"),
+	MICROPHONE_CONNECTED("microphoneConnected", "MicrophoneConnected"),
+	FIRMWARE_VERSION("firmwareVersion", "FirmwareVersion"),
 			;
 	private final String name;
+	private final String value;
 
-
-	SightEnum(String name) {
+	/**
+	 * Constructor for SightEnum.
+	 *
+	 * @param name the name of the attribute.
+	 * @param value the value of the attribute.
+	 */
+	SightEnum(String name, String value) {
 		this.name = name;
+		this.value = value;
 	}
 
 	/**
@@ -31,5 +38,14 @@ public enum SightEnum {
 	 */
 	public String getName() {
 		return name;
+	}
+
+	/**
+	 * Retrieves {@link #value}
+	 *
+	 * @return value of {@link #value}
+	 */
+	public String getValue() {
+		return value;
 	}
 }

@@ -12,18 +12,25 @@ package com.avispl.symphony.dal.logitech.collabos.common.metric;
  * @since 1.1.0
  */
 public enum IPControllerEnum {
-	NAME("name"),
-	MANUFACTURER("manufacturer"),
-	FIRMWARE_VERSION("firmwareVersion"),
-	SERIAL_NUMBER("serialNumber"),
-	IP_ADDRESS("ipAddress"),
-	DEVICE_NAME("deviceName"),
+	NAME("name", "Name"),
+	MANUFACTURER("manufacturer", "Manufacturer"),
+	FIRMWARE_VERSION("firmwareVersion", "FirmwareVersion"),
+	SERIAL_NUMBER("serialNumber", "SerialNumber"),
+	IP_ADDRESS("ipAddress", "IPAddress"),
+	DEVICE_NAME("deviceName","DeviceName"),
 	;
 	private final String name;
+	private final String value;
 
-
-	IPControllerEnum(String name) {
+	/**
+	 * Constructor for IPControllerEnum.
+	 *
+	 * @param name the name of the attribute.
+	 * @param value the value of the attribute.
+	 */
+	IPControllerEnum(String name, String value) {
 		this.name = name;
+		this.value = value;
 	}
 
 	/**
@@ -33,5 +40,14 @@ public enum IPControllerEnum {
 	 */
 	public String getName() {
 		return name;
+	}
+
+	/**
+	 * Retrieves {@link #value}
+	 *
+	 * @return value of {@link #value}
+	 */
+	public String getValue() {
+		return value;
 	}
 }
