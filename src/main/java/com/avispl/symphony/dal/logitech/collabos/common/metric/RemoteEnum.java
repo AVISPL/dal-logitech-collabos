@@ -12,13 +12,21 @@ package com.avispl.symphony.dal.logitech.collabos.common.metric;
  * @since 1.1.0
  */
 public enum RemoteEnum {
-	MAC_ADDRESS("macAddress"),
-	NAME("name"),
+	MAC_ADDRESS("macAddress", "MACAddress"),
+	NAME("name", "Name"),
 	;
 	private final String name;
+	private final String value;
 
-	RemoteEnum(String name) {
+	/**
+	 * Constructor for RemoteEnum.
+	 *
+	 * @param name the name of the attribute.
+	 * @param value the value of the attribute.
+	 */
+	RemoteEnum(String name, String value) {
 		this.name = name;
+		this.value = value;
 	}
 
 	/**
@@ -28,5 +36,14 @@ public enum RemoteEnum {
 	 */
 	public String getName() {
 		return name;
+	}
+
+	/**
+	 * Retrieves {@link #value}
+	 *
+	 * @return value of {@link #value}
+	 */
+	public String getValue() {
+		return value;
 	}
 }

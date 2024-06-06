@@ -12,17 +12,24 @@ package com.avispl.symphony.dal.logitech.collabos.common.metric;
  * @since 1.1.0
  */
 public enum DisplayEnum {
-	ID("id"),
-	HDMI_PORT("hdmiPort"),
-	HEIGHT("height"),
-	WIDTH("width"),
-	REFRESH_RATE("refreshRate"),
+	ID("id", "ID"),
+	HDMI_PORT("hdmiPort", "HDMIPort"),
+	HEIGHT("height", "Height(px)"),
+	WIDTH("width","Width(px)"),
+	REFRESH_RATE("refreshRate", "RefreshRate(Hz)"),
 			;
 	private final String name;
+	private final String value;
 
-
-	DisplayEnum(String name) {
+	/**
+	 * Constructor for DisplayEnum.
+	 *
+	 * @param name the name of the attribute.
+	 * @param value the value of the attribute.
+	 */
+	DisplayEnum(String name, String value) {
 		this.name = name;
+		this.value = value;
 	}
 
 	/**
@@ -32,5 +39,14 @@ public enum DisplayEnum {
 	 */
 	public String getName() {
 		return name;
+	}
+
+	/**
+	 * Retrieves {@link #value}
+	 *
+	 * @return value of {@link #value}
+	 */
+	public String getValue() {
+		return value;
 	}
 }

@@ -12,20 +12,27 @@ package com.avispl.symphony.dal.logitech.collabos.common.metric;
  * @since 1.1.0
  */
 public enum USBDeviceEnum {
-	ID("id"),
-	IS_AUDIO_DEVICE("isAudioDevice"),
-	IS_VIDEO_DEVICE("isVideoDevice"),
-	VIDEO_FIRMWARE_VERSION("videoFirmwareVersion"),
-	AUDIO_FIRMWARE_VERSION("audioFirmwareVersion"),
-	NAME("name"),
-	PID("pid"),
-	VID("vid"),
+	ID("id", "ID"),
+	IS_AUDIO_DEVICE("isAudioDevice", "AudioDevice"),
+	IS_VIDEO_DEVICE("isVideoDevice", "VideoDevice"),
+	VIDEO_FIRMWARE_VERSION("videoFirmwareVersion", "VideoFirmwareVersion"),
+	AUDIO_FIRMWARE_VERSION("audioFirmwareVersion", "AudioFirmwareVersion"),
+	NAME("name", "Name"),
+	PID("pid", "PID"),
+	VID("vid", "VID"),
 	;
 	private final String name;
+	private final String value;
 
-
-	USBDeviceEnum(String name) {
+	/**
+	 * Constructor for USBDeviceEnum.
+	 *
+	 * @param name the name of the attribute.
+	 * @param value the value of the attribute.
+	 */
+	USBDeviceEnum(String name, String value) {
 		this.name = name;
+		this.value = value;
 	}
 
 	/**
@@ -35,5 +42,14 @@ public enum USBDeviceEnum {
 	 */
 	public String getName() {
 		return name;
+	}
+
+	/**
+	 * Retrieves {@link #value}
+	 *
+	 * @return value of {@link #value}
+	 */
+	public String getValue() {
+		return value;
 	}
 }

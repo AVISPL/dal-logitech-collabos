@@ -12,19 +12,26 @@ package com.avispl.symphony.dal.logitech.collabos.common.metric;
  * @since 1.1.0
  */
 public enum USBControllerEnum {
-	NAME("name"),
-	MANUFACTURER("manufacturer"),
-	FIRMWARE_VERSION("firmwareVersion"),
-	SW_MCU_VERSION("swMcuVersion"),
-	HW_MCU_VERSION("hwMcuVersion"),
-	HDMI_VERSION("hdmiVersion"),
-	ORIENTATION("orientation"),
+	NAME("name", "Name"),
+	MANUFACTURER("manufacturer", "Manufacturer"),
+	FIRMWARE_VERSION("firmwareVersion", "FirmwareVersion"),
+	SW_MCU_VERSION("swMcuVersion", "SoftwareMcuVersion"),
+	HW_MCU_VERSION("hwMcuVersion", "HardwareMcuVersion"),
+	HDMI_VERSION("hdmiVersion", "HDMIVersion"),
+	ORIENTATION("orientation", "Orientation"),
 	;
 	private final String name;
+	private final String value;
 
-
-	USBControllerEnum(String name) {
+	/**
+	 * Constructor for USBControllerEnum.
+	 *
+	 * @param name the name of the attribute.
+	 * @param value the value of the attribute.
+	 */
+	USBControllerEnum(String name, String value) {
 		this.name = name;
+		this.value = value;
 	}
 
 	/**
@@ -34,5 +41,14 @@ public enum USBControllerEnum {
 	 */
 	public String getName() {
 		return name;
+	}
+
+	/**
+	 * Retrieves {@link #value}
+	 *
+	 * @return value of {@link #value}
+	 */
+	public String getValue() {
+		return value;
 	}
 }

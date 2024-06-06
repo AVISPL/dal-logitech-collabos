@@ -40,6 +40,7 @@ public class LogitechCollabOsCommunicatorTest {
 
 	@Test
 	void testGetMultipleStatistics() throws Exception {
+		collabOsCommunicator.setPingMode("TCP");
 		extendedStatistic = (ExtendedStatistics) collabOsCommunicator.getMultipleStatistics().get(0);
 		Map<String, String> statistics = extendedStatistic.getStatistics();
 		Assert.assertEquals(20, statistics.size());
@@ -73,10 +74,10 @@ public class LogitechCollabOsCommunicatorTest {
 	void testPeripheralData() throws Exception {
 		extendedStatistic = (ExtendedStatistics) collabOsCommunicator.getMultipleStatistics().get(0);
 		Map<String, String> statistics = extendedStatistic.getStatistics();
-		Assert.assertEquals("33", statistics.get("USBDevice#Id"));
-		Assert.assertEquals("true", statistics.get("USBDevice#IsAudioDevice"));
-		Assert.assertEquals("false", statistics.get("USBDevice#IsVideoDevice"));
+		Assert.assertEquals("33", statistics.get("USBDevice#ID"));
+		Assert.assertEquals("true", statistics.get("USBDevice#AudioDevice"));
+		Assert.assertEquals("false", statistics.get("USBDevice#VideoDevice"));
 		Assert.assertEquals("Mic Pod", statistics.get("USBDevice#Name"));
-		Assert.assertEquals("0x046d", statistics.get("USBDevice#Vid"));
+		Assert.assertEquals("0x046d", statistics.get("USBDevice#VID"));
 	}
 }

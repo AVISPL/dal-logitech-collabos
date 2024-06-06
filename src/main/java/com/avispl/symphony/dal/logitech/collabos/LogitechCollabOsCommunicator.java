@@ -311,8 +311,13 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 			JsonNode response = doGet("api/v1/insights/room", JsonNode.class);
 			if (response != null && !response.get(LogitechConstant.CODE).isNull() && 200 == response.get(LogitechConstant.CODE).intValue() && response.has(LogitechConstant.RESULT)) {
 				JsonNode results = response.get(LogitechConstant.RESULT);
-				cachedData.put(capitalizeFirstLetter(LogitechConstant.OCCUPANCY_COUNT), getDefaultValueForNullData(results.get(LogitechConstant.OCCUPANCY_COUNT).asText()));
-				cachedData.put(capitalizeFirstLetter(LogitechConstant.OCCUPANCY_MODE), getDefaultValueForNullData(results.get(LogitechConstant.OCCUPANCY_MODE).asText()));
+				if (results.has(LogitechConstant.OCCUPANCY_COUNT)) {
+					cachedData.put(capitalizeFirstLetter(LogitechConstant.OCCUPANCY_COUNT), getDefaultValueForNullData(results.get(LogitechConstant.OCCUPANCY_COUNT).asText()));
+				}
+
+				if (results.has(LogitechConstant.OCCUPANCY_MODE)) {
+					cachedData.put(capitalizeFirstLetter(LogitechConstant.OCCUPANCY_MODE), getDefaultValueForNullData(results.get(LogitechConstant.OCCUPANCY_MODE).asText()));
+				}
 			}
 		} catch (Exception e) {
 			failedMonitor++;
@@ -393,9 +398,11 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 		for (Enum<?> property : enumClass.getEnumConstants()) {
 			try {
 				Method methodName = property.getClass().getMethod("getName");
+				Method methodValue = property.getClass().getMethod("getValue");
 				String nameMetric = (String) methodName.invoke(property);
+				String valueMetric = (String) methodValue.invoke(property);
 				if (item.get(nameMetric) != null) {
-					stats.put(group + capitalizeFirstLetter(nameMetric), item.get(nameMetric).asText());
+					stats.put(group + valueMetric, capitalizeFirstLetter(item.get(nameMetric).asText()));
 				}
 			} catch (Exception e) {
 				logger.error("Error when populate peripheral data", e);
