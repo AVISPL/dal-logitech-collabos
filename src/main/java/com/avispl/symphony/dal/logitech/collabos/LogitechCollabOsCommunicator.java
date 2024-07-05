@@ -26,6 +26,8 @@ import com.avispl.symphony.api.dal.error.ResourceNotReachableException;
 import com.avispl.symphony.api.dal.monitor.Monitorable;
 import com.avispl.symphony.dal.communicator.RestCommunicator;
 import com.avispl.symphony.dal.logitech.collabos.common.DeviceInfo;
+import com.avispl.symphony.dal.logitech.collabos.common.InsightInfo;
+import com.avispl.symphony.dal.logitech.collabos.common.LogitechCommand;
 import com.avispl.symphony.dal.logitech.collabos.common.LogitechConstant;
 import com.avispl.symphony.dal.logitech.collabos.common.PeripheralType;
 import com.avispl.symphony.dal.logitech.collabos.common.PingMode;
@@ -137,12 +139,14 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 		cachedData.clear();
 		failedMonitor = 0;
 		retrieveDeviceInfo();
-		retrieveRoomSightsData();
 		retrievePeripheralsData();
-		if (failedMonitor == 3) {
+		retrieveDeviceSightsData();
+		retrieveRoomSightsData();
+		if (failedMonitor == LogitechCommand.values().length) {
 			throw new ResourceNotReachableException("Failed all command. Please double-check the requests");
 		}
-		populateDeviceInfoAndRoomInsightData(stats);
+		populateDeviceInfo(stats);
+		populateInsightData(stats);
 		populatePeripheralData(stats);
 		extendedStatistics.setStatistics(stats);
 
@@ -290,7 +294,7 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	 */
 	private void retrieveDeviceInfo() {
 		try {
-			JsonNode response = doGet("api/v1/device", JsonNode.class);
+			JsonNode response = doGet(LogitechCommand.DEVICE_INFO.getName(), JsonNode.class);
 			if (response != null && !response.get(LogitechConstant.CODE).isNull() && 200 == response.get(LogitechConstant.CODE).intValue() && response.has(LogitechConstant.RESULT)) {
 				JsonNode results = response.get(LogitechConstant.RESULT);
 				for (DeviceInfo item : DeviceInfo.values()) {
@@ -308,7 +312,7 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	 */
 	private void retrieveRoomSightsData() {
 		try {
-			JsonNode response = doGet("api/v1/insights/room", JsonNode.class);
+			JsonNode response = doGet(LogitechCommand.INSIGHTS_ROOM.getName(), JsonNode.class);
 			if (response != null && !response.get(LogitechConstant.CODE).isNull() && 200 == response.get(LogitechConstant.CODE).intValue() && response.has(LogitechConstant.RESULT)) {
 				JsonNode results = response.get(LogitechConstant.RESULT);
 				if (results.has(LogitechConstant.OCCUPANCY_COUNT)) {
@@ -326,11 +330,34 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	}
 
 	/**
+	 * Retrieves device sights data from the device.
+	 */
+	private void retrieveDeviceSightsData() {
+		try {
+			JsonNode response = doGet(LogitechCommand.INSIGHTS_DEVICE.getName(), JsonNode.class);
+			if (response != null && !response.get(LogitechConstant.CODE).isNull() && 200 == response.get(LogitechConstant.CODE).intValue() && response.has(LogitechConstant.RESULT)) {
+				JsonNode results = response.get(LogitechConstant.RESULT);
+				for (InsightInfo item : InsightInfo.values()) {
+					if ("RoomInsights".equalsIgnoreCase(item.getGroup())) {
+						continue;
+					}
+					if (results.has(item.getName())) {
+						cachedData.put(capitalizeFirstLetter(item.getName()), getDefaultValueForNullData(results.get(item.getName()).asText()));
+					}
+				}
+			}
+		} catch (Exception e) {
+			failedMonitor++;
+			logger.error("Error while retrieving device insights data from device", e);
+		}
+	}
+
+	/**
 	 * Retrieves room peripheral data from the device.
 	 */
 	private void retrievePeripheralsData() {
 		try {
-			JsonNode response = doGet("api/v1/peripherals", JsonNode.class);
+			JsonNode response = doGet(LogitechCommand.PERIPHERALS_INFO.getName(), JsonNode.class);
 			if (response != null && !response.get(LogitechConstant.CODE).isNull() && 200 == response.get(LogitechConstant.CODE).intValue() && response.has(LogitechConstant.RESULT)) {
 				JsonNode results = response.get(LogitechConstant.RESULT);
 				for (PeripheralType item : PeripheralType.values()) {
@@ -350,17 +377,25 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	 *
 	 * @param stats The map to populate with device and room insight data.
 	 */
-	private void populateDeviceInfoAndRoomInsightData(Map<String, String> stats) {
+	private void populateDeviceInfo(Map<String, String> stats) {
 		for (DeviceInfo item : DeviceInfo.values()) {
 			String propertyName = capitalizeFirstLetter(item.getName());
 			stats.put(propertyName, getDefaultValueForNullData(cachedData.get(propertyName)));
 		}
-		if (cachedData.get(capitalizeFirstLetter(LogitechConstant.OCCUPANCY_COUNT)) != null) {
-			stats.put("RoomInsights#OccupancyCount", getDefaultValueForNullData(cachedData.get("OccupancyCount")));
-		}
+	}
 
-		if (cachedData.get(capitalizeFirstLetter(LogitechConstant.OCCUPANCY_MODE)) != null) {
-			stats.put("RoomInsights#OccupancyMode", getDefaultValueForNullData(cachedData.get("OccupancyMode")));
+	/**
+	 * Populates insight data into the given stats map.
+	 *
+	 * @param stats The map to populate with insight data.
+	 */
+	private void populateInsightData(Map<String, String> stats) {
+		for (InsightInfo item : InsightInfo.values()) {
+			String group = item.getGroup();
+			String name = item.getName();
+			if (cachedData.get(capitalizeFirstLetter(name)) != null) {
+				stats.put(group + "#" + capitalizeFirstLetter(name), getDefaultValueForNullData(cachedData.get(capitalizeFirstLetter(name))));
+			}
 		}
 	}
 

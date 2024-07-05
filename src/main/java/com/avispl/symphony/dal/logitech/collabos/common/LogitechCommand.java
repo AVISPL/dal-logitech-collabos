@@ -5,23 +5,17 @@
 package com.avispl.symphony.dal.logitech.collabos.common;
 
 /**
- * DeviceInfo
+ * LogitechCommand
  *
  * @author Harry / Symphony Dev Team<br>
- * Created on 5/8/2024
- * @since 1.1.0
+ * Created on 7/5/2024
+ * @since 1.0.0
  */
-public enum DeviceInfo {
-	COLLAB_VERSION("collabOSVersion"),
-	DEVICE_NAME("deviceName"),
-	ETHERNET_MAC("ethernetMAC"),
-	HW_VERSION("hwVersion"),
-	MODEL_NAME("modelName"),
-	SERIAL_NUMBER("serialNumber"),
-	SERVICE_PROVIDER("serviceProvider"),
-	SYSTEM_NAME("systemName"),
-	WIFI_MAC("wifiMAC"),
-	DEVICE_CONFIGURATION("deviceConfiguration"),
+public enum LogitechCommand {
+	DEVICE_INFO("api/v1/device"),
+	INSIGHTS_ROOM("api/v1/insights/room"),
+	INSIGHTS_DEVICE("api/v1/insights/device"),
+	PERIPHERALS_INFO("api/v1/peripherals"),
 	;
 	private final String name;
 
@@ -30,7 +24,7 @@ public enum DeviceInfo {
 	 *
 	 * @param name is device info
 	 */
-	DeviceInfo(String name) {
+	LogitechCommand(String name) {
 		this.name = name;
 	}
 
