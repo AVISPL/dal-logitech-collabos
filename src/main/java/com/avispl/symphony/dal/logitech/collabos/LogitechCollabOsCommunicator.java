@@ -294,7 +294,7 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	 */
 	private void retrieveDeviceInfo() {
 		try {
-			JsonNode response = doGet(LogitechCommand.DEVICE_INFO.getName(), JsonNode.class);
+			JsonNode response = doGet(LogitechCommand.DEVICE_INFO.getUri(), JsonNode.class);
 			if (response != null && !response.get(LogitechConstant.CODE).isNull() && 200 == response.get(LogitechConstant.CODE).intValue() && response.has(LogitechConstant.RESULT)) {
 				JsonNode results = response.get(LogitechConstant.RESULT);
 				for (DeviceInfo item : DeviceInfo.values()) {
@@ -312,7 +312,7 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	 */
 	private void retrieveRoomSightsData() {
 		try {
-			JsonNode response = doGet(LogitechCommand.INSIGHTS_ROOM.getName(), JsonNode.class);
+			JsonNode response = doGet(LogitechCommand.INSIGHTS_ROOM.getUri(), JsonNode.class);
 			if (response != null && !response.get(LogitechConstant.CODE).isNull() && 200 == response.get(LogitechConstant.CODE).intValue() && response.has(LogitechConstant.RESULT)) {
 				JsonNode results = response.get(LogitechConstant.RESULT);
 				if (results.has(LogitechConstant.OCCUPANCY_COUNT)) {
@@ -334,15 +334,16 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	 */
 	private void retrieveDeviceSightsData() {
 		try {
-			JsonNode response = doGet(LogitechCommand.INSIGHTS_DEVICE.getName(), JsonNode.class);
+			JsonNode response = doGet(LogitechCommand.INSIGHTS_DEVICE.getUri(), JsonNode.class);
 			if (response != null && !response.get(LogitechConstant.CODE).isNull() && 200 == response.get(LogitechConstant.CODE).intValue() && response.has(LogitechConstant.RESULT)) {
 				JsonNode results = response.get(LogitechConstant.RESULT);
 				for (InsightInfo item : InsightInfo.values()) {
 					if ("RoomInsights".equalsIgnoreCase(item.getGroup())) {
 						continue;
 					}
-					if (results.has(item.getName())) {
-						cachedData.put(capitalizeFirstLetter(item.getName()), getDefaultValueForNullData(results.get(item.getName()).asText()));
+					String propertyName = item.getName();
+					if (results.has(propertyName)) {
+						cachedData.put(capitalizeFirstLetter(propertyName), getDefaultValueForNullData(results.get(propertyName).asText()));
 					}
 				}
 			}
@@ -357,7 +358,7 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	 */
 	private void retrievePeripheralsData() {
 		try {
-			JsonNode response = doGet(LogitechCommand.PERIPHERALS_INFO.getName(), JsonNode.class);
+			JsonNode response = doGet(LogitechCommand.PERIPHERALS_INFO.getUri(), JsonNode.class);
 			if (response != null && !response.get(LogitechConstant.CODE).isNull() && 200 == response.get(LogitechConstant.CODE).intValue() && response.has(LogitechConstant.RESULT)) {
 				JsonNode results = response.get(LogitechConstant.RESULT);
 				for (PeripheralType item : PeripheralType.values()) {

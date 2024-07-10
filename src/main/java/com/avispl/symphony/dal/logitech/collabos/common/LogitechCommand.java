@@ -17,23 +17,23 @@ public enum LogitechCommand {
 	INSIGHTS_DEVICE("api/v1/insights/device"),
 	PERIPHERALS_INFO("api/v1/peripherals"),
 	;
-	private final String name;
+	private final String uri;
 
 	/**
 	 * Constructor of DeviceInfo
 	 *
-	 * @param name is device info
+	 * @param uri is device info
 	 */
-	LogitechCommand(String name) {
-		this.name = name;
+	LogitechCommand(String uri) {
+		this.uri = uri;
 	}
 
 	/**
-	 * Retrieves {@link #name}
+	 * Retrieves {@link #uri}
 	 *
-	 * @return value of {@link #name}
+	 * @return value of {@link #uri}
 	 */
-	public String getName() {
-		return name;
+	public String getUri() {
+		return uri;
 	}
 }
