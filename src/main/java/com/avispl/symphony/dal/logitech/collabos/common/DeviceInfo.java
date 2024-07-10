@@ -22,10 +22,14 @@ public enum DeviceInfo {
 	SYSTEM_NAME("systemName"),
 	WIFI_MAC("wifiMAC"),
 	DEVICE_CONFIGURATION("deviceConfiguration"),
-			;
+	;
 	private final String name;
 
-
+	/**
+	 * Constructor of DeviceInfo
+	 *
+	 * @param name is device info
+	 */
 	DeviceInfo(String name) {
 		this.name = name;
 	}
