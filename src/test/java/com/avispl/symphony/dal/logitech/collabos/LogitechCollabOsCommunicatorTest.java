@@ -1,100 +1,94 @@
-/*
- *  Copyright (c) 2024 AVI-SPL, Inc. All Rights Reserved.
- */
 package com.avispl.symphony.dal.logitech.collabos;
-
-import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
 
 import java.util.Map;
 
-import com.github.tomakehurst.wiremock.junit.WireMockRule;
-import javax.security.auth.login.FailedLoginException;
-import org.junit.Rule;
+import org.junit.Assert;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 
 /**
- * LogitechCollabOsCommunicatorTest class
+ * LogitechCollabOsComunicatorTest
  *
  * @author Kevin / Symphony Dev Team<br>
- * Created on 1/3/2024
+ * Created on 5/9/2024
  * @since 1.0.0
  */
-@Tag("Mock")
 public class LogitechCollabOsCommunicatorTest {
-	private ExtendedStatistics extendedStatistic;
-	private LogitechCollabOsCommunicator logitechCollabOsCommunicator;
-	private static final int HTTP_PORT = 8088;
-	private static final int HTTPS_PORT = 8443;
-	private static final String HOST_NAME = "127.0.0.1";
-	private static final String PROTOCOL = "http";
+	private LogitechCollabOsCommunicator collabOsCommunicator;
+	static ExtendedStatistics extendedStatistic;
 
-	@Rule
-	WireMockRule wireMockRule = new WireMockRule(options().port(HTTP_PORT).httpsPort(HTTPS_PORT)
-			.bindAddress(HOST_NAME));
+	@BeforeEach()
+	public void setUp() throws Exception {
+		collabOsCommunicator = new LogitechCollabOsCommunicator();
 
-	@BeforeEach
-	void setUp() throws Exception {
-		wireMockRule.start();
-		logitechCollabOsCommunicator = new LogitechCollabOsCommunicator();
-		logitechCollabOsCommunicator.setHost(HOST_NAME);
-		logitechCollabOsCommunicator.setProtocol(PROTOCOL);
-		logitechCollabOsCommunicator.setPort(HTTP_PORT);
-		logitechCollabOsCommunicator.setPassword("admin");
-		logitechCollabOsCommunicator.setLogin("admin");
-		logitechCollabOsCommunicator.setTrustAllCertificates(false);
-		logitechCollabOsCommunicator.init();
-		logitechCollabOsCommunicator.connect();
+		collabOsCommunicator.setHost("");
+		collabOsCommunicator.setPort(443);
+		collabOsCommunicator.setLogin("");
+		collabOsCommunicator.setPassword("");
+		collabOsCommunicator.init();
+		collabOsCommunicator.connect();
+
 	}
 
-	@AfterEach
-	void destroy() throws Exception {
-		wireMockRule.stop();
-		logitechCollabOsCommunicator.disconnect();
+	@AfterEach()
+	public void destroy() throws Exception {
+		collabOsCommunicator.disconnect();
 	}
 
-	/**
-	 * Test get device information from real device
-	 */
 	@Test
-	void testGetDeviceInfo() throws Exception {
-		extendedStatistic = (ExtendedStatistics) logitechCollabOsCommunicator.getMultipleStatistics().get(0);
-		Map<String, String> stats = extendedStatistic.getStatistics();
-		Assertions.assertEquals(10, stats.size());
-
-		Assertions.assertEquals("RoomMate", stats.get("DeviceName"));
-		Assertions.assertEquals("1.11.181", stats.get("CollabOSVersion"));
-		Assertions.assertEquals("44:73:d6:ad:e6:0f", stats.get("EthernetMAC"));
-		Assertions.assertEquals("5.1", stats.get("HwVersion"));
-		Assertions.assertEquals("VR0030", stats.get("ModelName"));
-		Assertions.assertEquals("2135FDGM2P92", stats.get("SerialNumber"));
-		Assertions.assertEquals("RoomMate-GM2P92", stats.get("SystemName"));
-		Assertions.assertEquals("MTR", stats.get("ServiceProvider"));
-		Assertions.assertEquals("44:73:d6:ad:e6:0e", stats.get("WifiMAC"));
-		Assertions.assertEquals("HOST", stats.get("DeviceConfiguration"));
+	void testGetMultipleStatistics() throws Exception {
+		collabOsCommunicator.setPingMode("TCP");
+		extendedStatistic = (ExtendedStatistics) collabOsCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> statistics = extendedStatistic.getStatistics();
+		Assert.assertEquals(30, statistics.size());
 	}
 
-	/**
-	 * Test get token api failed, login failed
-	 */
 	@Test
-	void testLoginError() throws Exception {
-		logitechCollabOsCommunicator.destroy();
-		wireMockRule.start();
-		logitechCollabOsCommunicator = new LogitechCollabOsCommunicator();
-		logitechCollabOsCommunicator.setHost(HOST_NAME);
-		logitechCollabOsCommunicator.setProtocol(PROTOCOL);
-		logitechCollabOsCommunicator.setPort(HTTP_PORT);
-		logitechCollabOsCommunicator.setPassword("admin");
-		logitechCollabOsCommunicator.setLogin("admin1");
-		logitechCollabOsCommunicator.setTrustAllCertificates(false);
-		logitechCollabOsCommunicator.init();
-		logitechCollabOsCommunicator.connect();
-		Assertions.assertThrows(FailedLoginException.class, () -> logitechCollabOsCommunicator.getMultipleStatistics(), "Expect error because login failed");
+	void testDeviceInfo() throws Exception {
+		extendedStatistic = (ExtendedStatistics) collabOsCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> statistics = extendedStatistic.getStatistics();
+		Assert.assertEquals("1.12.246", statistics.get("CollabOSVersion"));
+		Assert.assertEquals("DEVICE", statistics.get("DeviceConfiguration"));
+		Assert.assertEquals("Rally Bar Mini", statistics.get("DeviceName"));
+		Assert.assertEquals("44:73:d6:ee:bd:df", statistics.get("EthernetMAC"));
+		Assert.assertEquals("4.4", statistics.get("HwVersion"));
+		Assert.assertEquals("VR0020", statistics.get("ModelName"));
+		Assert.assertEquals("2346FD2KD0T2", statistics.get("SerialNumber"));
+		Assert.assertEquals("BYOD", statistics.get("ServiceProvider"));
+		Assert.assertEquals("RallyBarM-KD0T2", statistics.get("SystemName"));
+		Assert.assertEquals("44:73:d6:ee:bd:de", statistics.get("WifiMAC"));
+	}
+
+	@Test
+	void testRoomInsight() throws Exception {
+		extendedStatistic = (ExtendedStatistics) collabOsCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> statistics = extendedStatistic.getStatistics();
+		Assert.assertEquals("0", statistics.get("RoomInsights#OccupancyCount"));
+		Assert.assertEquals("ALWAYS_ON", statistics.get("RoomInsights#OccupancyMode"));
+	}
+
+	@Test
+	void testPeripheralData() throws Exception {
+		extendedStatistic = (ExtendedStatistics) collabOsCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> statistics = extendedStatistic.getStatistics();
+		Assert.assertEquals("33", statistics.get("USBDevice#ID"));
+		Assert.assertEquals("true", statistics.get("USBDevice#AudioDevice"));
+		Assert.assertEquals("false", statistics.get("USBDevice#VideoDevice"));
+		Assert.assertEquals("Mic Pod", statistics.get("USBDevice#Name"));
+		Assert.assertEquals("0x046d", statistics.get("USBDevice#VID"));
+	}
+
+	@Test
+	void testDeviceInsight() throws Exception {
+		extendedStatistic = (ExtendedStatistics) collabOsCommunicator.getMultipleStatistics().get(0);
+		Map<String, String> statistics = extendedStatistic.getStatistics();
+		Assert.assertEquals("IDLE", statistics.get("DeviceInsights#DeviceState"));
+		Assert.assertEquals("UNMUTED", statistics.get("DeviceInsights#MicState"));
+		Assert.assertEquals("UNMUTED", statistics.get("DeviceInsights#SpeakerState"));
+		Assert.assertEquals("10", statistics.get("DeviceInsights#SpeakerMaxVolume"));
+		Assert.assertEquals("10", statistics.get("DeviceInsights#SpeakerVolume"));
 	}
 }
