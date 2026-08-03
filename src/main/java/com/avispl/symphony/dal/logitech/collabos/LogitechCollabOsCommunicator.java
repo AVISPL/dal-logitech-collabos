@@ -160,7 +160,7 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	 */
 	@Override
 	protected void authenticate() throws Exception {
-		// The device no require authenticate
+		token = getTokenAPI();
 	}
 
 	/**
@@ -283,7 +283,7 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 				tokenExpire = System.currentTimeMillis();
 				return response.get(LogitechConstant.RESULT).get("auth_token").asText();
 			}
-			throw new FailedLoginException("Error while get token");
+			throw new FailedLoginException("Error while retrieving the access token");
 		} catch (Exception e) {
 			throw new FailedLoginException("Login fail. Please check the credentials");
 		}
@@ -371,6 +371,18 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 			failedMonitor++;
 			logger.error("Error while retrieving peripherals data from device", e);
 		}
+	}
+
+	@Override
+	protected <Response> Response doGet(String uri, Class<Response> responseClass) throws Exception {
+		Response response;
+		try {
+			response = super.doGet(uri, responseClass);
+		} catch (FailedLoginException e) {
+			authenticate();
+			response = super.doGet(uri, responseClass);
+		}
+		return response;
 	}
 
 	/**
