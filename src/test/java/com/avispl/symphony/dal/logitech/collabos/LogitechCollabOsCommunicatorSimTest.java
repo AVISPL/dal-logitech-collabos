@@ -158,8 +158,14 @@ public class LogitechCollabOsCommunicatorSimTest {
 	}
 
 	/**
-	 * Credentials the device rejects are an authentication problem and have to be reported as one
-	 * straight away, rather than absorbed as a monitoring failure.
+	 * Credentials the device starts rejecting mid-run surface as an authentication failure.
+	 *
+	 * The re-authentication happens inside
+	 * {@link LogitechCollabOsCommunicator#doGet(String, Class)}, so a rejected sign in reaches the
+	 * commands as their own failure and rides the same consecutive failure tolerance as any other:
+	 * absorbed below {@code apiRetryAttempts}, then reported as the {@link FailedLoginException}
+	 * the device produced. Credentials that are already wrong when a cycle starts still fail on the
+	 * spot, in the sign in that opens the cycle.
 	 */
 	@Test
 	@DisplayName("credentials the device rejects are reported as a login failure")
@@ -168,6 +174,9 @@ public class LogitechCollabOsCommunicatorSimTest {
 
 		control("PUT", "/api/simulator/state", "{\"auth\":{\"password\":\"changed\"}}");
 		control("POST", "/api/simulator/token/invalidate", null);
+
+		poll();
+		poll();
 
 		Assertions.assertThrows(FailedLoginException.class, this::poll,
 				"a rejected sign in has to surface as an authentication failure");

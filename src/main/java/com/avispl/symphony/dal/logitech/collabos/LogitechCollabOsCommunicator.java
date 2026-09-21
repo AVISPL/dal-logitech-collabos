@@ -101,14 +101,6 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	private final Map<LogitechCommand, JsonNode> cachedResponses = new EnumMap<>(LogitechCommand.class);
 
 	/**
-	 * authentication failure registered during the current monitoring cycle
-	 *
-	 * Set when the device rejects a new sign in attempt, so that the cycle is reported as an authentication problem
-	 * instead of a generic monitoring failure. Reset on every {@link #getMultipleStatistics()} call.
-	 */
-	private FailedLoginException authenticationFailure;
-
-	/**
 	 * cached data
 	 */
 	private Map<String, String> cachedData = new HashMap<>();
@@ -155,7 +147,6 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	 */
 	@Override
 	public List<Statistics> getMultipleStatistics() throws Exception {
-		authenticationFailure = null;
 		checkValidApiToken();
 		ExtendedStatistics extendedStatistics = new ExtendedStatistics();
 		Map<String, String> stats = new HashMap<>();
@@ -164,9 +155,6 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 		retrievePeripheralsData();
 		retrieveDeviceSightsData();
 		retrieveRoomSightsData();
-		if (authenticationFailure != null) {
-			throw authenticationFailure;
-		}
 		populateDeviceInfo(stats);
 		populateInsightData(stats);
 		populatePeripheralData(stats);
@@ -182,7 +170,7 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	 */
 	@Override
 	protected void authenticate() throws Exception {
-		// The device no require authenticate
+		token = getTokenAPI();
 	}
 
 	/**
@@ -210,7 +198,6 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 		}
 		token = null;
 		tokenExpire = null;
-		authenticationFailure = null;
 		consecutiveFailures.clear();
 		cachedResponses.clear();
 		super.internalDestroy();
@@ -278,43 +265,6 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	}
 
 	/**
-	 * Performs a GET request and retries it once with a freshly issued API token if the device rejects the current one.
-	 *
-	 * The token is cached locally for {@link #expiresIn}, but the device may end its session earlier, for instance after a
-	 * reboot. Without this retry the adapter keeps sending the stale token until the local expiration elapses, and every
-	 * monitoring request fails until the adapter is re-created. See SYAL-3257.
-	 *
-	 * Only one sign in attempt is made per monitoring cycle: once {@link #authenticationFailure} is set, the remaining
-	 * commands of the cycle fail without contacting the sign in endpoint again.
-	 *
-	 * @param uri the uri to request
-	 * @param clazz the expected response type
-	 * @return the deserialized response
-	 * @throws Exception if the request fails, or if a new token cannot be obtained
-	 */
-	private <T> T doGetWithRetryOnUnauthorized(String uri, Class<T> clazz) throws Exception {
-		try {
-			return doGet(uri, clazz);
-		} catch (FailedLoginException e) {
-			if (authenticationFailure != null || StringUtils.isNullOrEmpty(getLogin()) || StringUtils.isNullOrEmpty(getPassword())) {
-				throw e;
-			}
-			if (logger.isDebugEnabled()) {
-				logger.debug(String.format("The device has rejected the cached API token while requesting %s, signing in again and retrying the request.", uri));
-			}
-			token = null;
-			tokenExpire = null;
-			try {
-				checkValidApiToken();
-			} catch (FailedLoginException loginException) {
-				authenticationFailure = loginException;
-				throw loginException;
-			}
-			return doGet(uri, clazz);
-		}
-	}
-
-	/**
 	 * Executes a monitoring command and returns its result payload.
 	 *
 	 * A command that fails, or that answers with anything other than a successful payload, is not reported right away:
@@ -331,7 +281,7 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	private JsonNode retrieveCommandResult(LogitechCommand command) throws Exception {
 		JsonNode response;
 		try {
-			response = doGetWithRetryOnUnauthorized(command.getUri(), JsonNode.class);
+			response = doGet(command.getUri(), JsonNode.class);
 		} catch (Exception e) {
 			return registerCommandFailure(command, e);
 		}
@@ -427,6 +377,18 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 				cachedData.put(item.getName(), results.get(item.getValue()).toString());
 			}
 		}
+	}
+
+	@Override
+	protected <Response> Response doGet(String uri, Class<Response> responseClass) throws Exception {
+		Response response;
+		try {
+			response = super.doGet(uri, responseClass);
+		} catch (FailedLoginException e) {
+			authenticate();
+			response = super.doGet(uri, responseClass);
+		}
+		return response;
 	}
 
 	/**
