@@ -40,7 +40,6 @@ public class LogitechCollabOsCommunicatorTest {
 
 	@Test
 	void testGetMultipleStatistics() throws Exception {
-		collabOsCommunicator.setPingMode("TCP");
 		extendedStatistic = (ExtendedStatistics) collabOsCommunicator.getMultipleStatistics().get(0);
 		Map<String, String> statistics = extendedStatistic.getStatistics();
 		Assert.assertEquals(30, statistics.size());
