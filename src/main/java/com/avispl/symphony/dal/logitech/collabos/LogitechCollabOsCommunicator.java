@@ -246,10 +246,14 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	/**
 	 * Get token api from the device
 	 *
-	 * A {@link ResourceNotReachableException} raised by the sign in request is propagated as is, so that a device that
-	 * cannot be reached is not reported as a credentials problem. Any other failure keeps its original cause attached.
+	 * Only the sign in request itself is guarded, so that the checks on the response below report their own failure
+	 * instead of being swallowed by the same catch. A {@link ResourceNotReachableException} or a
+	 * {@link CommandFailureException} raised by the request is propagated as is: a device that cannot be reached, or
+	 * that answered the sign in with an error, is not a credentials problem. Anything else is reported as a failed
+	 * login with its original cause attached.
 	 *
-	 * @throws FailedLoginException if login fail
+	 * @return the auth token issued by the device
+	 * @throws FailedLoginException if the device rejects the credentials or does not issue a token
 	 */
 	private String getTokenAPI() throws FailedLoginException {
 		JsonNode response;
@@ -258,17 +262,19 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 			payload.put(LogitechConstant.USERNAME, this.getLogin());
 			payload.put(LogitechConstant.PASSWORD, this.getPassword());
 			response = doPost("api/v1/signin", objectMapper.writeValueAsString(payload), JsonNode.class);
-		} catch (ResourceNotReachableException e) {
+		} catch (ResourceNotReachableException | CommandFailureException e) {
 			throw e;
 		} catch (Exception e) {
-			throw (FailedLoginException) new FailedLoginException("Login fail. Please check the credentials").initCause(e);
+			FailedLoginException failure = new FailedLoginException("Login fail. Please check the credentials");
+			failure.initCause(e);
+			throw failure;
 		}
 		if (response != null && response.has(LogitechConstant.CODE) && !response.get(LogitechConstant.CODE).isNull() && 200 == response.get(LogitechConstant.CODE).intValue()
 				&& response.has(LogitechConstant.RESULT) && !response.get(LogitechConstant.RESULT).isEmpty()) {
 			tokenExpire = System.currentTimeMillis();
 			return response.get(LogitechConstant.RESULT).get("auth_token").asText();
 		}
-		throw new FailedLoginException("Login fail. Please check the credentials");
+		throw new FailedLoginException("Error while retrieving the access token. Device response: " + response);
 	}
 
 	/**
