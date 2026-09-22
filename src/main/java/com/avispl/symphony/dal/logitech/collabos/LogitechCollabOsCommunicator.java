@@ -4,8 +4,11 @@
 package com.avispl.symphony.dal.logitech.collabos;
 
 import java.lang.reflect.Method;
+import java.net.ConnectException;
+import java.net.Socket;
+import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.util.Collections;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,7 +22,6 @@ import javax.security.auth.login.FailedLoginException;
 
 import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.api.dal.dto.monitor.Statistics;
-import com.avispl.symphony.api.dal.error.CommandFailureException;
 import com.avispl.symphony.api.dal.error.ResourceNotReachableException;
 import com.avispl.symphony.api.dal.monitor.Monitorable;
 import com.avispl.symphony.dal.communicator.RestCommunicator;
@@ -28,6 +30,7 @@ import com.avispl.symphony.dal.logitech.collabos.common.InsightInfo;
 import com.avispl.symphony.dal.logitech.collabos.common.LogitechCommand;
 import com.avispl.symphony.dal.logitech.collabos.common.LogitechConstant;
 import com.avispl.symphony.dal.logitech.collabos.common.PeripheralType;
+import com.avispl.symphony.dal.logitech.collabos.common.PingMode;
 import com.avispl.symphony.dal.util.StringUtils;
 
 /**
@@ -83,22 +86,9 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	private Long expiresIn = 12 * 3600L * 1000;
 
 	/**
-	 * number of consecutive failures of a monitoring command that are tolerated before the failure is reported to Symphony
+	 * failed monitor
 	 */
-	private int apiRetryAttempts = LogitechConstant.DEFAULT_API_RETRY_ATTEMPTS;
-
-	/**
-	 * number of consecutive failures of each monitoring command, reset as soon as the command succeeds again
-	 */
-	private final Map<LogitechCommand, Integer> consecutiveFailures = new EnumMap<>(LogitechCommand.class);
-
-	/**
-	 * last successful result payload of each monitoring command
-	 *
-	 * Served while a command keeps failing below {@link #apiRetryAttempts}, so that a transient failure of a
-	 * single endpoint does not remove the properties of all the other ones from the device.
-	 */
-	private final Map<LogitechCommand, JsonNode> cachedResponses = new EnumMap<>(LogitechCommand.class);
+	private int failedMonitor = 0;
 
 	/**
 	 * cached data
@@ -106,30 +96,26 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	private Map<String, String> cachedData = new HashMap<>();
 
 	/**
-	 * Retrieves {@link #apiRetryAttempts}
-	 *
-	 * @return value of {@link #apiRetryAttempts}
+	 * ping mode
 	 */
-	public String getApiRetryAttempts() {
-		return String.valueOf(apiRetryAttempts);
+	private PingMode pingMode = PingMode.ICMP;
+
+	/**
+	 * Retrieves {@link #pingMode}
+	 *
+	 * @return value of {@link #pingMode}
+	 */
+	public String getPingMode() {
+		return pingMode.name();
 	}
 
 	/**
-	 * Sets {@link #apiRetryAttempts} value
+	 * Sets {@link #pingMode} value
 	 *
-	 * Values that cannot be parsed, or that are not greater than zero, fall back to
-	 * {@link LogitechConstant#DEFAULT_API_RETRY_ATTEMPTS}.
-	 *
-	 * @param apiRetryAttempts new value of {@link #apiRetryAttempts}
+	 * @param pingMode new value of {@link #pingMode}
 	 */
-	public void setApiRetryAttempts(String apiRetryAttempts) {
-		int value = LogitechConstant.DEFAULT_API_RETRY_ATTEMPTS;
-		try {
-			value = Integer.parseInt(apiRetryAttempts.trim());
-		} catch (Exception e) {
-			logger.error(String.format("Invalid apiRetryAttempts value %s, the default value of %s is used instead", apiRetryAttempts, value), e);
-		}
-		this.apiRetryAttempts = value > 0 ? value : LogitechConstant.DEFAULT_API_RETRY_ATTEMPTS;
+	public void setPingMode(String pingMode) {
+		this.pingMode = PingMode.ofString(pingMode);
 	}
 
 	/**
@@ -151,10 +137,14 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 		ExtendedStatistics extendedStatistics = new ExtendedStatistics();
 		Map<String, String> stats = new HashMap<>();
 		cachedData.clear();
+		failedMonitor = 0;
 		retrieveDeviceInfo();
 		retrievePeripheralsData();
 		retrieveDeviceSightsData();
 		retrieveRoomSightsData();
+		if (failedMonitor == LogitechCommand.values().length) {
+			throw new ResourceNotReachableException("Failed all command. Please double-check the requests");
+		}
 		populateDeviceInfo(stats);
 		populateInsightData(stats);
 		populatePeripheralData(stats);
@@ -171,6 +161,58 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	@Override
 	protected void authenticate() throws Exception {
 		token = getTokenAPI();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * <p>
+	 *
+	 * Check for available devices before retrieving the value
+	 * ping latency information to Symphony
+	 */
+	@Override
+	public int ping() throws Exception {
+		if (this.pingMode == PingMode.ICMP) {
+			return super.ping();
+		} else if (this.pingMode == PingMode.TCP) {
+			if (isInitialized()) {
+				long pingResultTotal = 0L;
+
+				for (int i = 0; i < this.getPingAttempts(); i++) {
+					long startTime = System.currentTimeMillis();
+
+					try (Socket puSocketConnection = new Socket(this.host, this.getPort())) {
+						puSocketConnection.setSoTimeout(this.getPingTimeout());
+						if (puSocketConnection.isConnected()) {
+							long pingResult = System.currentTimeMillis() - startTime;
+							pingResultTotal += pingResult;
+							if (this.logger.isTraceEnabled()) {
+								this.logger.trace(String.format("PING OK: Attempt #%s to connect to %s on port %s succeeded in %s ms", i + 1, host, this.getPort(), pingResult));
+							}
+						} else {
+							if (this.logger.isDebugEnabled()) {
+								this.logger.debug(String.format("PING DISCONNECTED: Connection to %s did not succeed within the timeout period of %sms", host, this.getPingTimeout()));
+							}
+							return this.getPingTimeout();
+						}
+					} catch (SocketTimeoutException | ConnectException tex) {
+						throw new RuntimeException("Socket connection timed out", tex);
+					} catch (UnknownHostException ex) {
+						throw new UnknownHostException(String.format("Connection timed out, UNKNOWN host %s", host));
+					} catch (Exception e) {
+						if (this.logger.isWarnEnabled()) {
+							this.logger.warn(String.format("PING TIMEOUT: Connection to %s did not succeed, UNKNOWN ERROR %s: ", host, e.getMessage()));
+						}
+						return this.getPingTimeout();
+					}
+				}
+				return Math.max(1, Math.toIntExact(pingResultTotal / this.getPingAttempts()));
+			} else {
+				throw new IllegalStateException("Cannot use device class without calling init() first");
+			}
+		} else {
+			throw new IllegalArgumentException("Unknown PING Mode: " + pingMode);
+		}
 	}
 
 	/**
@@ -196,10 +238,6 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 		if (!cachedData.isEmpty()) {
 			cachedData.clear();
 		}
-		token = null;
-		tokenExpire = null;
-		consecutiveFailures.clear();
-		cachedResponses.clear();
 		super.internalDestroy();
 	}
 
@@ -224,7 +262,7 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 		if (StringUtils.isNullOrEmpty(getLogin()) || StringUtils.isNullOrEmpty(getPassword())) {
 			return false;
 		}
-		if (StringUtils.isNullOrEmpty(token) || tokenExpire == null || System.currentTimeMillis() - tokenExpire >= expiresIn) {
+		if (StringUtils.isNullOrEmpty(token) || System.currentTimeMillis() - tokenExpire >= expiresIn) {
 			token = getTokenAPI();
 		}
 		return StringUtils.isNotNullOrEmpty(token);
@@ -233,149 +271,105 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	/**
 	 * Get token api from the device
 	 *
-	 * Only the sign in request itself is guarded, so that the checks on the response below report their own failure
-	 * instead of being swallowed by the same catch. A {@link ResourceNotReachableException} or a
-	 * {@link CommandFailureException} raised by the request is propagated as is: a device that cannot be reached, or
-	 * that answered the sign in with an error, is not a credentials problem. Anything else is reported as a failed
-	 * login with its original cause attached.
-	 *
-	 * @return the auth token issued by the device
-	 * @throws FailedLoginException if the device rejects the credentials or does not issue a token
+	 * @throws FailedLoginException if login fail
 	 */
 	private String getTokenAPI() throws FailedLoginException {
-		JsonNode response;
 		try {
 			Map<String, String> payload = new HashMap<>();
 			payload.put(LogitechConstant.USERNAME, this.getLogin());
 			payload.put(LogitechConstant.PASSWORD, this.getPassword());
-			response = doPost("api/v1/signin", objectMapper.writeValueAsString(payload), JsonNode.class);
-		} catch (ResourceNotReachableException | CommandFailureException e) {
-			throw e;
+			JsonNode response = doPost("api/v1/signin", objectMapper.writeValueAsString(payload), JsonNode.class);
+			if (response != null && !response.get(LogitechConstant.CODE).isNull() && 200 == response.get(LogitechConstant.CODE).intValue() && !response.get(LogitechConstant.RESULT).isEmpty()) {
+				tokenExpire = System.currentTimeMillis();
+				return response.get(LogitechConstant.RESULT).get("auth_token").asText();
+			}
+			throw new FailedLoginException("Error while retrieving the access token");
 		} catch (Exception e) {
-			FailedLoginException failure = new FailedLoginException("Login fail. Please check the credentials");
-			failure.initCause(e);
-			throw failure;
+			throw new FailedLoginException("Login fail. Please check the credentials");
 		}
-		if (response != null && response.has(LogitechConstant.CODE) && !response.get(LogitechConstant.CODE).isNull() && 200 == response.get(LogitechConstant.CODE).intValue()
-				&& response.has(LogitechConstant.RESULT) && !response.get(LogitechConstant.RESULT).isEmpty()) {
-			tokenExpire = System.currentTimeMillis();
-			return response.get(LogitechConstant.RESULT).get("auth_token").asText();
-		}
-		throw new FailedLoginException("Error while retrieving the access token. Device response: " + response);
-	}
-
-	/**
-	 * Executes a monitoring command and returns its result payload.
-	 *
-	 * A command that fails, or that answers with anything other than a successful payload, is not reported right away:
-	 * the last payload the command returned successfully is served instead, and the failure is only propagated once the
-	 * command has failed {@link #apiRetryAttempts} times in a row. This keeps a transient failure, such as the
-	 * device rebooting, from raising an alarm while the data stays at most a few polling cycles old. The failure is
-	 * propagated unchanged, so that the alarm carries the error the device actually reported.
-	 *
-	 * @param command the monitoring command to execute
-	 * @return the result payload of the command, the last known one if the command is currently failing, or null if the
-	 * command has never succeeded
-	 * @throws Exception the failure reported by the device, once the command has failed {@link #apiRetryAttempts} times in a row
-	 */
-	private JsonNode retrieveCommandResult(LogitechCommand command) throws Exception {
-		JsonNode response;
-		try {
-			response = doGet(command.getUri(), JsonNode.class);
-		} catch (Exception e) {
-			return registerCommandFailure(command, e);
-		}
-		if (response != null && response.has(LogitechConstant.CODE) && !response.get(LogitechConstant.CODE).isNull() && 200 == response.get(LogitechConstant.CODE).intValue()
-				&& response.has(LogitechConstant.RESULT)) {
-			consecutiveFailures.remove(command);
-			JsonNode results = response.get(LogitechConstant.RESULT);
-			cachedResponses.put(command, results);
-			return results;
-		}
-		return registerCommandFailure(command, new CommandFailureException(host, command.getUri(), String.valueOf(response)));
-	}
-
-	/**
-	 * Registers a failure of the given command and decides whether it has to be reported to Symphony.
-	 *
-	 * @param command the command that has failed
-	 * @param error the failure reported by the device
-	 * @return the last known result payload of the command, or null if the command has never succeeded
-	 * @throws Exception the given error, once the command has failed {@link #apiRetryAttempts} times in a row
-	 */
-	private JsonNode registerCommandFailure(LogitechCommand command, Exception error) throws Exception {
-		int failures = consecutiveFailures.merge(command, 1, Integer::sum);
-		if (failures >= apiRetryAttempts) {
-			logger.error(String.format("Command %s has failed %s times in a row, reporting the failure", command.name(), failures), error);
-			cachedResponses.remove(command);
-			throw error;
-		}
-		logger.error(String.format("Error while retrieving %s data from device, attempt %s of %s, the previously retrieved data is used instead", command.name(), failures, apiRetryAttempts),
-				error);
-		return cachedResponses.get(command);
 	}
 
 	/**
 	 * Retrieve monitoring data of the device
 	 */
-	private void retrieveDeviceInfo() throws Exception {
-		JsonNode results = retrieveCommandResult(LogitechCommand.DEVICE_INFO);
-		if (results == null) {
-			return;
-		}
-		for (DeviceInfo item : DeviceInfo.values()) {
-			cachedData.put(capitalizeFirstLetter(item.getName()), checkNullOrEmptyValue(results.get(item.getName())));
+	private void retrieveDeviceInfo() {
+		try {
+			JsonNode response = doGet(LogitechCommand.DEVICE_INFO.getUri(), JsonNode.class);
+			if (response != null && !response.get(LogitechConstant.CODE).isNull() && 200 == response.get(LogitechConstant.CODE).intValue() && response.has(LogitechConstant.RESULT)) {
+				JsonNode results = response.get(LogitechConstant.RESULT);
+				for (DeviceInfo item : DeviceInfo.values()) {
+					cachedData.put(capitalizeFirstLetter(item.getName()), checkNullOrEmptyValue(results.get(item.getName())));
+				}
+			}
+		} catch (Exception e) {
+			failedMonitor++;
+			logger.error("Error while retrieving device info data from device", e);
 		}
 	}
 
 	/**
 	 * Retrieves room sights data from the device.
 	 */
-	private void retrieveRoomSightsData() throws Exception {
-		JsonNode results = retrieveCommandResult(LogitechCommand.INSIGHTS_ROOM);
-		if (results == null) {
-			return;
-		}
-		if (results.has(LogitechConstant.OCCUPANCY_COUNT)) {
-			cachedData.put(capitalizeFirstLetter(LogitechConstant.OCCUPANCY_COUNT), getDefaultValueForNullData(results.get(LogitechConstant.OCCUPANCY_COUNT).asText()));
-		}
+	private void retrieveRoomSightsData() {
+		try {
+			JsonNode response = doGet(LogitechCommand.INSIGHTS_ROOM.getUri(), JsonNode.class);
+			if (response != null && !response.get(LogitechConstant.CODE).isNull() && 200 == response.get(LogitechConstant.CODE).intValue() && response.has(LogitechConstant.RESULT)) {
+				JsonNode results = response.get(LogitechConstant.RESULT);
+				if (results.has(LogitechConstant.OCCUPANCY_COUNT)) {
+					cachedData.put(capitalizeFirstLetter(LogitechConstant.OCCUPANCY_COUNT), getDefaultValueForNullData(results.get(LogitechConstant.OCCUPANCY_COUNT).asText()));
+				}
 
-		if (results.has(LogitechConstant.OCCUPANCY_MODE)) {
-			cachedData.put(capitalizeFirstLetter(LogitechConstant.OCCUPANCY_MODE), getDefaultValueForNullData(results.get(LogitechConstant.OCCUPANCY_MODE).asText()));
+				if (results.has(LogitechConstant.OCCUPANCY_MODE)) {
+					cachedData.put(capitalizeFirstLetter(LogitechConstant.OCCUPANCY_MODE), getDefaultValueForNullData(results.get(LogitechConstant.OCCUPANCY_MODE).asText()));
+				}
+			}
+		} catch (Exception e) {
+			failedMonitor++;
+			logger.error("Error while retrieving room insights data from device", e);
 		}
 	}
 
 	/**
 	 * Retrieves device sights data from the device.
 	 */
-	private void retrieveDeviceSightsData() throws Exception {
-		JsonNode results = retrieveCommandResult(LogitechCommand.INSIGHTS_DEVICE);
-		if (results == null) {
-			return;
-		}
-		for (InsightInfo item : InsightInfo.values()) {
-			if ("RoomInsights".equalsIgnoreCase(item.getGroup())) {
-				continue;
+	private void retrieveDeviceSightsData() {
+		try {
+			JsonNode response = doGet(LogitechCommand.INSIGHTS_DEVICE.getUri(), JsonNode.class);
+			if (response != null && !response.get(LogitechConstant.CODE).isNull() && 200 == response.get(LogitechConstant.CODE).intValue() && response.has(LogitechConstant.RESULT)) {
+				JsonNode results = response.get(LogitechConstant.RESULT);
+				for (InsightInfo item : InsightInfo.values()) {
+					if ("RoomInsights".equalsIgnoreCase(item.getGroup())) {
+						continue;
+					}
+					String propertyName = item.getName();
+					if (results.has(propertyName)) {
+						cachedData.put(capitalizeFirstLetter(propertyName), getDefaultValueForNullData(results.get(propertyName).asText()));
+					}
+				}
 			}
-			String propertyName = item.getName();
-			if (results.has(propertyName)) {
-				cachedData.put(capitalizeFirstLetter(propertyName), getDefaultValueForNullData(results.get(propertyName).asText()));
-			}
+		} catch (Exception e) {
+			failedMonitor++;
+			logger.error("Error while retrieving device insights data from device", e);
 		}
 	}
 
 	/**
 	 * Retrieves room peripheral data from the device.
 	 */
-	private void retrievePeripheralsData() throws Exception {
-		JsonNode results = retrieveCommandResult(LogitechCommand.PERIPHERALS_INFO);
-		if (results == null) {
-			return;
-		}
-		for (PeripheralType item : PeripheralType.values()) {
-			if (results.has(item.getValue())) {
-				cachedData.put(item.getName(), results.get(item.getValue()).toString());
+	private void retrievePeripheralsData() {
+		try {
+			JsonNode response = doGet(LogitechCommand.PERIPHERALS_INFO.getUri(), JsonNode.class);
+			if (response != null && !response.get(LogitechConstant.CODE).isNull() && 200 == response.get(LogitechConstant.CODE).intValue() && response.has(LogitechConstant.RESULT)) {
+				JsonNode results = response.get(LogitechConstant.RESULT);
+				for (PeripheralType item : PeripheralType.values()) {
+					if (results.has(item.getValue())) {
+						cachedData.put(item.getName(), results.get(item.getValue()).toString());
+					}
+				}
 			}
+		} catch (Exception e) {
+			failedMonitor++;
+			logger.error("Error while retrieving peripherals data from device", e);
 		}
 	}
 
