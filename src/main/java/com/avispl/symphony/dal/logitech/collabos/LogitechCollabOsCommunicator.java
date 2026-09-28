@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2024 AVI-SPL, Inc. All Rights Reserved.
+ *  Copyright (c) 2024-2026 AVI-SPL, Inc. All Rights Reserved.
  */
 package com.avispl.symphony.dal.logitech.collabos;
 
@@ -60,6 +60,7 @@ import com.avispl.symphony.dal.util.StringUtils;
  * AdapterVersion
  *
  * @author Kevin / Symphony Dev Team<br>
+ * @author Maksym Rossiitsev / Symphony Dev Team<br>
  * Created on 1/3/2024
  * @since 1.0.0
  */
@@ -93,11 +94,15 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 
 	/**
 	 * number of consecutive failures of a monitoring command that are tolerated before the failure is reported to Symphony
+	 *
+	 * @since 1.1.2
 	 */
 	private int apiRetryAttempts = LogitechConstant.DEFAULT_API_RETRY_ATTEMPTS;
 
 	/**
 	 * number of consecutive failures of each monitoring command, reset as soon as the command succeeds again
+	 *
+	 * @since 1.1.2
 	 */
 	private final Map<LogitechCommand, Integer> consecutiveFailures = new EnumMap<>(LogitechCommand.class);
 
@@ -106,6 +111,8 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	 *
 	 * Served while a command keeps failing below {@link #apiRetryAttempts}, so that a transient failure of a
 	 * single endpoint does not remove the properties of all the other ones from the device.
+	 *
+	 * @since 1.1.2
 	 */
 	private final Map<LogitechCommand, JsonNode> cachedResponses = new EnumMap<>(LogitechCommand.class);
 
@@ -116,11 +123,15 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 
 	/**
 	 * adapter version and build date, loaded from {@code version.properties}
+	 *
+	 * @since 1.1.2
 	 */
 	private final Properties versionProperties = new Properties();
 
 	/**
 	 * adapter initialization timestamp, used to report the adapter uptime
+	 *
+	 * @since 1.1.2
 	 */
 	private Long adapterInitializationTimestamp;
 
@@ -128,6 +139,7 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	 * Retrieves {@link #apiRetryAttempts}
 	 *
 	 * @return value of {@link #apiRetryAttempts}
+	 * @since 1.1.2
 	 */
 	public String getApiRetryAttempts() {
 		return String.valueOf(apiRetryAttempts);
@@ -140,6 +152,7 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	 * {@link LogitechConstant#DEFAULT_API_RETRY_ATTEMPTS}.
 	 *
 	 * @param apiRetryAttempts new value of {@link #apiRetryAttempts}
+	 * @since 1.1.2
 	 */
 	public void setApiRetryAttempts(String apiRetryAttempts) {
 		int value = LogitechConstant.DEFAULT_API_RETRY_ATTEMPTS;
@@ -208,6 +221,8 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 
 	/**
 	 * Loads the adapter version and build date from {@code version.properties}
+	 *
+	 * @since 1.1.2
 	 */
 	private void loadVersionProperties() {
 		try (InputStream stream = getClass().getResourceAsStream(LogitechConstant.VERSION_PROPERTIES_FILE)) {
@@ -314,6 +329,7 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	 * @return the result payload of the command, the last known one if the command is currently failing, or null if the
 	 * command has never succeeded
 	 * @throws Exception the failure reported by the device, once the command has failed {@link #apiRetryAttempts} times in a row
+	 * @since 1.1.2
 	 */
 	private JsonNode retrieveCommandResult(LogitechCommand command) throws Exception {
 		JsonNode response;
@@ -339,6 +355,7 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	 * @param error the failure reported by the device
 	 * @return the last known result payload of the command, or null if the command has never succeeded
 	 * @throws Exception the given error, once the command has failed {@link #apiRetryAttempts} times in a row
+	 * @since 1.1.2
 	 */
 	private JsonNode registerCommandFailure(LogitechCommand command, Exception error) throws Exception {
 		int failures = consecutiveFailures.merge(command, 1, Integer::sum);
@@ -481,6 +498,7 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	 * Populates adapter metadata into the given stats map.
 	 *
 	 * @param stats The map to populate with adapter metadata.
+	 * @since 1.1.2
 	 */
 	private void populateAdapterMetadata(Map<String, String> stats) {
 		long uptimeMillis = adapterInitializationTimestamp == null ? 0 : System.currentTimeMillis() - adapterInitializationTimestamp;
@@ -499,6 +517,7 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	 *
 	 * @param uptimeSeconds adapter uptime in seconds
 	 * @return string value of format 'x d x hr x min x sec'
+	 * @since 1.1.2
 	 */
 	private String normalizeUptime(long uptimeSeconds) {
 		StringBuilder normalizedUptime = new StringBuilder();

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2024 AVI-SPL, Inc. All Rights Reserved.
+ *  Copyright (c) 2024-2026 AVI-SPL, Inc. All Rights Reserved.
  */
 package com.avispl.symphony.dal.logitech.collabos;
 
@@ -43,6 +43,7 @@ import com.github.tomakehurst.wiremock.stubbing.Scenario;
  * {@link LogitechCollabOsCommunicator#doGet(String, Class)}.
  *
  * @author Kevin / Symphony Dev Team<br>
+ * @author Maksym Rossiitsev / Symphony Dev Team<br>
  * Created on 5/9/2024
  * @since 1.0.0
  */
@@ -196,6 +197,8 @@ public class LogitechCollabOsCommunicatorTest {
 	 * It is tolerated while the commands stay below {@link LogitechCollabOsCommunicator#setApiRetryAttempts(String)},
 	 * and then reported carrying the failure the device actually produced — a 401, so a {@link FailedLoginException} —
 	 * rather than the blanket ResourceNotReachableException the adapter used to invent. See SYAL-3257.
+	 *
+	 * @since 1.1.2
 	 */
 	@Test
 	void testTokenStillInvalidAfterRetryIsToleratedThenReported() throws Exception {
