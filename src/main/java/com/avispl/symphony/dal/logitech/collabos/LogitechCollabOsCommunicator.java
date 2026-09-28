@@ -58,6 +58,7 @@ import com.avispl.symphony.dal.util.StringUtils;
  * AdapterUptime
  * AdapterUptime(min)
  * AdapterVersion
+ * MonitoringCycleInterval(min)
  *
  * @author Kevin / Symphony Dev Team<br>
  * @author Maksym Rossiitsev / Symphony Dev Team<br>
@@ -508,6 +509,12 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 		stats.put(LogitechConstant.ADAPTER_METADATA_GROUP + LogitechConstant.ADAPTER_UPTIME_MIN, String.valueOf(uptimeMillis / (1000 * 60)));
 		stats.put(LogitechConstant.ADAPTER_METADATA_GROUP + LogitechConstant.ADAPTER_VERSION,
 				getDefaultValueForNullData(versionProperties.getProperty(LogitechConstant.ADAPTER_VERSION_KEY)));
+		try {
+			stats.put(LogitechConstant.ADAPTER_METADATA_GROUP + LogitechConstant.MONITORING_CYCLE_INTERVAL, String.valueOf(getMonitoringRate()));
+		} catch (NoSuchMethodError e) {
+			logger.warn("Unsupported feature: getMonitoringRate isn't available on current Cloud Connector version.", e);
+			stats.put(LogitechConstant.ADAPTER_METADATA_GROUP + LogitechConstant.MONITORING_CYCLE_INTERVAL, LogitechConstant.NONE);
+		}
 	}
 
 	/**

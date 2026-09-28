@@ -25,6 +25,7 @@ public class LogitechConstant {
 	public static final String ADAPTER_UPTIME = "AdapterUptime";
 	public static final String ADAPTER_UPTIME_MIN = "AdapterUptime(min)";
 	public static final String ADAPTER_VERSION = "AdapterVersion";
+	public static final String MONITORING_CYCLE_INTERVAL = "MonitoringCycleInterval(min)";
 	public static final String VERSION_PROPERTIES_FILE = "/version.properties";
 	public static final String ADAPTER_BUILD_DATE_KEY = "adapter.build.date";
 	public static final String ADAPTER_VERSION_KEY = "adapter.version";
