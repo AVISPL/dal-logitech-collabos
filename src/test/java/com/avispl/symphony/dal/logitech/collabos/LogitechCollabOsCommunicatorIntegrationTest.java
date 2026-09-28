@@ -1,3 +1,6 @@
+/*
+ *  Copyright (c) 2024-2026 AVI-SPL, Inc. All Rights Reserved.
+ */
 package com.avispl.symphony.dal.logitech.collabos;
 
 import java.util.Map;
@@ -17,6 +20,7 @@ import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
  * build.
  *
  * @author Kevin / Symphony Dev Team<br>
+ * @author Maksym Rossiitsev / Symphony Dev Team<br>
  * Created on 5/9/2024
  * @since 1.0.0
  */
