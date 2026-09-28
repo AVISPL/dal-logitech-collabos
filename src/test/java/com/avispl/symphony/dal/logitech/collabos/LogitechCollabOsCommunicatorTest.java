@@ -124,7 +124,7 @@ public class LogitechCollabOsCommunicatorTest {
 		stubHappyPath();
 		Map<String, String> statistics = extractProps(communicator.getMultipleStatistics());
 		assertTrue(statistics.get("AdapterMetadata#AdapterVersion").matches("\\d+\\.\\d+\\.\\d+.*"));
-		assertTrue(statistics.get("AdapterMetadata#AdapterBuildDate").matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z"));
+		assertTrue(statistics.get("AdapterMetadata#AdapterBuildDate").matches("\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}"));
 		assertTrue(statistics.get("AdapterMetadata#AdapterUptime").matches("(\\d+ (d|hr|min|sec) ?)+"));
 		assertEquals("0", statistics.get("AdapterMetadata#AdapterUptime(min)"));
 		assertEquals(String.valueOf(communicator.getMonitoringRate()), statistics.get("AdapterMetadata#MonitoringCycleInterval(min)"));
