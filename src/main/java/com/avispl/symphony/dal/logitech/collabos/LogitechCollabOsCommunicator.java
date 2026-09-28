@@ -3,12 +3,15 @@
  */
 package com.avispl.symphony.dal.logitech.collabos;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -49,6 +52,12 @@ import com.avispl.symphony.dal.util.StringUtils;
  * WifiMAC
  * DeviceName
  * ServiceProvider
+ *
+ * AdapterMetadata:
+ * AdapterBuildDate
+ * AdapterUptime
+ * AdapterUptime(min)
+ * AdapterVersion
  *
  * @author Kevin / Symphony Dev Team<br>
  * Created on 1/3/2024
@@ -106,6 +115,16 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	private Map<String, String> cachedData = new HashMap<>();
 
 	/**
+	 * adapter version and build date, loaded from {@code version.properties}
+	 */
+	private final Properties versionProperties = new Properties();
+
+	/**
+	 * adapter initialization timestamp, used to report the adapter uptime
+	 */
+	private Long adapterInitializationTimestamp;
+
+	/**
 	 * Retrieves {@link #apiRetryAttempts}
 	 *
 	 * @return value of {@link #apiRetryAttempts}
@@ -158,6 +177,7 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 		populateDeviceInfo(stats);
 		populateInsightData(stats);
 		populatePeripheralData(stats);
+		populateAdapterMetadata(stats);
 		extendedStatistics.setStatistics(stats);
 
 		localExtendedStatistics = extendedStatistics;
@@ -181,7 +201,24 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 		if (logger.isDebugEnabled()) {
 			logger.debug("Internal init is called.");
 		}
+		adapterInitializationTimestamp = System.currentTimeMillis();
+		loadVersionProperties();
 		super.internalInit();
+	}
+
+	/**
+	 * Loads the adapter version and build date from {@code version.properties}
+	 */
+	private void loadVersionProperties() {
+		try (InputStream stream = getClass().getResourceAsStream(LogitechConstant.VERSION_PROPERTIES_FILE)) {
+			if (stream == null) {
+				logger.error(String.format("Unable to find %s, the adapter version and build date are not available", LogitechConstant.VERSION_PROPERTIES_FILE));
+				return;
+			}
+			versionProperties.load(stream);
+		} catch (IOException e) {
+			logger.error(String.format("Unable to load %s, the adapter version and build date are not available", LogitechConstant.VERSION_PROPERTIES_FILE), e);
+		}
 	}
 
 	/**
@@ -438,6 +475,52 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 				}
 			}
 		}
+	}
+
+	/**
+	 * Populates adapter metadata into the given stats map.
+	 *
+	 * @param stats The map to populate with adapter metadata.
+	 */
+	private void populateAdapterMetadata(Map<String, String> stats) {
+		long uptimeMillis = adapterInitializationTimestamp == null ? 0 : System.currentTimeMillis() - adapterInitializationTimestamp;
+		stats.put(LogitechConstant.ADAPTER_METADATA_GROUP + LogitechConstant.ADAPTER_BUILD_DATE,
+				getDefaultValueForNullData(versionProperties.getProperty(LogitechConstant.ADAPTER_BUILD_DATE_KEY)));
+		stats.put(LogitechConstant.ADAPTER_METADATA_GROUP + LogitechConstant.ADAPTER_UPTIME, normalizeUptime(uptimeMillis / 1000));
+		stats.put(LogitechConstant.ADAPTER_METADATA_GROUP + LogitechConstant.ADAPTER_UPTIME_MIN, String.valueOf(uptimeMillis / (1000 * 60)));
+		stats.put(LogitechConstant.ADAPTER_METADATA_GROUP + LogitechConstant.ADAPTER_VERSION,
+				getDefaultValueForNullData(versionProperties.getProperty(LogitechConstant.ADAPTER_VERSION_KEY)));
+	}
+
+	/**
+	 * Uptime is received in seconds, need to normalize it and make it human-readable, like
+	 * 1 d 5 hr 1 min 14 sec
+	 * Zero values are omitted, except for seconds when the uptime is below one minute.
+	 *
+	 * @param uptimeSeconds adapter uptime in seconds
+	 * @return string value of format 'x d x hr x min x sec'
+	 */
+	private String normalizeUptime(long uptimeSeconds) {
+		StringBuilder normalizedUptime = new StringBuilder();
+
+		long seconds = uptimeSeconds % 60;
+		long minutes = uptimeSeconds % 3600 / 60;
+		long hours = uptimeSeconds % 86400 / 3600;
+		long days = uptimeSeconds / 86400;
+
+		if (days > 0) {
+			normalizedUptime.append(days).append(" d ");
+		}
+		if (hours > 0) {
+			normalizedUptime.append(hours).append(" hr ");
+		}
+		if (minutes > 0) {
+			normalizedUptime.append(minutes).append(" min ");
+		}
+		if (seconds > 0 || normalizedUptime.length() == 0) {
+			normalizedUptime.append(seconds).append(" sec");
+		}
+		return normalizedUptime.toString().trim();
 	}
 
 	/**

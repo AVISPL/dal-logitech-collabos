@@ -19,6 +19,14 @@ public class LogitechConstant {
 	public static final String OCCUPANCY_COUNT = "occupancyCount";
 	public static final String OCCUPANCY_MODE = "occupancyMode";
 	public static final String NONE = "None";
+	public static final String ADAPTER_METADATA_GROUP = "AdapterMetadata#";
+	public static final String ADAPTER_BUILD_DATE = "AdapterBuildDate";
+	public static final String ADAPTER_UPTIME = "AdapterUptime";
+	public static final String ADAPTER_UPTIME_MIN = "AdapterUptime(min)";
+	public static final String ADAPTER_VERSION = "AdapterVersion";
+	public static final String VERSION_PROPERTIES_FILE = "/version.properties";
+	public static final String ADAPTER_BUILD_DATE_KEY = "adapter.build.date";
+	public static final String ADAPTER_VERSION_KEY = "adapter.version";
 
 	/**
 	 * Number of consecutive failures a monitoring command is allowed before the adapter reports the failure to Symphony.
