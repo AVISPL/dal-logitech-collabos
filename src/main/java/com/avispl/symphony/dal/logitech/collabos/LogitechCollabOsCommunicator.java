@@ -1,14 +1,17 @@
 /*
- *  Copyright (c) 2024 AVI-SPL, Inc. All Rights Reserved.
+ *  Copyright (c) 2024-2026 AVI-SPL, Inc. All Rights Reserved.
  */
 package com.avispl.symphony.dal.logitech.collabos;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -50,7 +53,15 @@ import com.avispl.symphony.dal.util.StringUtils;
  * DeviceName
  * ServiceProvider
  *
+ * AdapterMetadata:
+ * AdapterBuildDate
+ * AdapterUptime
+ * AdapterUptime(min)
+ * AdapterVersion
+ * MonitoringCycleInterval(min)
+ *
  * @author Kevin / Symphony Dev Team<br>
+ * @author Maksym Rossiitsev / Symphony Dev Team<br>
  * Created on 1/3/2024
  * @since 1.0.0
  */
@@ -84,11 +95,15 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 
 	/**
 	 * number of consecutive failures of a monitoring command that are tolerated before the failure is reported to Symphony
+	 *
+	 * @since 1.1.2
 	 */
 	private int apiRetryAttempts = LogitechConstant.DEFAULT_API_RETRY_ATTEMPTS;
 
 	/**
 	 * number of consecutive failures of each monitoring command, reset as soon as the command succeeds again
+	 *
+	 * @since 1.1.2
 	 */
 	private final Map<LogitechCommand, Integer> consecutiveFailures = new EnumMap<>(LogitechCommand.class);
 
@@ -97,6 +112,8 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	 *
 	 * Served while a command keeps failing below {@link #apiRetryAttempts}, so that a transient failure of a
 	 * single endpoint does not remove the properties of all the other ones from the device.
+	 *
+	 * @since 1.1.2
 	 */
 	private final Map<LogitechCommand, JsonNode> cachedResponses = new EnumMap<>(LogitechCommand.class);
 
@@ -106,9 +123,24 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	private Map<String, String> cachedData = new HashMap<>();
 
 	/**
+	 * adapter version and build date, loaded from {@code version.properties}
+	 *
+	 * @since 1.1.2
+	 */
+	private final Properties versionProperties = new Properties();
+
+	/**
+	 * adapter initialization timestamp, used to report the adapter uptime
+	 *
+	 * @since 1.1.2
+	 */
+	private Long adapterInitializationTimestamp;
+
+	/**
 	 * Retrieves {@link #apiRetryAttempts}
 	 *
 	 * @return value of {@link #apiRetryAttempts}
+	 * @since 1.1.2
 	 */
 	public String getApiRetryAttempts() {
 		return String.valueOf(apiRetryAttempts);
@@ -121,6 +153,7 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	 * {@link LogitechConstant#DEFAULT_API_RETRY_ATTEMPTS}.
 	 *
 	 * @param apiRetryAttempts new value of {@link #apiRetryAttempts}
+	 * @since 1.1.2
 	 */
 	public void setApiRetryAttempts(String apiRetryAttempts) {
 		int value = LogitechConstant.DEFAULT_API_RETRY_ATTEMPTS;
@@ -158,6 +191,7 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 		populateDeviceInfo(stats);
 		populateInsightData(stats);
 		populatePeripheralData(stats);
+		populateAdapterMetadata(stats);
 		extendedStatistics.setStatistics(stats);
 
 		localExtendedStatistics = extendedStatistics;
@@ -181,7 +215,26 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 		if (logger.isDebugEnabled()) {
 			logger.debug("Internal init is called.");
 		}
+		adapterInitializationTimestamp = System.currentTimeMillis();
+		loadVersionProperties();
 		super.internalInit();
+	}
+
+	/**
+	 * Loads the adapter version and build date from {@code version.properties}
+	 *
+	 * @since 1.1.2
+	 */
+	private void loadVersionProperties() {
+		try (InputStream stream = getClass().getResourceAsStream(LogitechConstant.VERSION_PROPERTIES_FILE)) {
+			if (stream == null) {
+				logger.error(String.format("Unable to find %s, the adapter version and build date are not available", LogitechConstant.VERSION_PROPERTIES_FILE));
+				return;
+			}
+			versionProperties.load(stream);
+		} catch (IOException e) {
+			logger.error(String.format("Unable to load %s, the adapter version and build date are not available", LogitechConstant.VERSION_PROPERTIES_FILE), e);
+		}
 	}
 
 	/**
@@ -277,6 +330,7 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	 * @return the result payload of the command, the last known one if the command is currently failing, or null if the
 	 * command has never succeeded
 	 * @throws Exception the failure reported by the device, once the command has failed {@link #apiRetryAttempts} times in a row
+	 * @since 1.1.2
 	 */
 	private JsonNode retrieveCommandResult(LogitechCommand command) throws Exception {
 		JsonNode response;
@@ -302,6 +356,7 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	 * @param error the failure reported by the device
 	 * @return the last known result payload of the command, or null if the command has never succeeded
 	 * @throws Exception the given error, once the command has failed {@link #apiRetryAttempts} times in a row
+	 * @since 1.1.2
 	 */
 	private JsonNode registerCommandFailure(LogitechCommand command, Exception error) throws Exception {
 		int failures = consecutiveFailures.merge(command, 1, Integer::sum);
@@ -438,6 +493,60 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 				}
 			}
 		}
+	}
+
+	/**
+	 * Populates adapter metadata into the given stats map.
+	 *
+	 * @param stats The map to populate with adapter metadata.
+	 * @since 1.1.2
+	 */
+	private void populateAdapterMetadata(Map<String, String> stats) {
+		long uptimeMillis = adapterInitializationTimestamp == null ? 0 : System.currentTimeMillis() - adapterInitializationTimestamp;
+		stats.put(LogitechConstant.ADAPTER_METADATA_GROUP + LogitechConstant.ADAPTER_BUILD_DATE,
+				getDefaultValueForNullData(versionProperties.getProperty(LogitechConstant.ADAPTER_BUILD_DATE_KEY)));
+		stats.put(LogitechConstant.ADAPTER_METADATA_GROUP + LogitechConstant.ADAPTER_UPTIME, normalizeUptime(uptimeMillis / 1000));
+		stats.put(LogitechConstant.ADAPTER_METADATA_GROUP + LogitechConstant.ADAPTER_UPTIME_MIN, String.valueOf(uptimeMillis / (1000 * 60)));
+		stats.put(LogitechConstant.ADAPTER_METADATA_GROUP + LogitechConstant.ADAPTER_VERSION,
+				getDefaultValueForNullData(versionProperties.getProperty(LogitechConstant.ADAPTER_VERSION_KEY)));
+		try {
+			stats.put(LogitechConstant.ADAPTER_METADATA_GROUP + LogitechConstant.MONITORING_CYCLE_INTERVAL, String.valueOf(getMonitoringRate()));
+		} catch (NoSuchMethodError e) {
+			logger.warn("Unsupported feature: getMonitoringRate isn't available on current Cloud Connector version.", e);
+			stats.put(LogitechConstant.ADAPTER_METADATA_GROUP + LogitechConstant.MONITORING_CYCLE_INTERVAL, LogitechConstant.NONE);
+		}
+	}
+
+	/**
+	 * Uptime is received in seconds, need to normalize it and make it human-readable, like
+	 * 1 d 5 hr 1 min 14 sec
+	 * Zero values are omitted, except for seconds when the uptime is below one minute.
+	 *
+	 * @param uptimeSeconds adapter uptime in seconds
+	 * @return string value of format 'x d x hr x min x sec'
+	 * @since 1.1.2
+	 */
+	private String normalizeUptime(long uptimeSeconds) {
+		StringBuilder normalizedUptime = new StringBuilder();
+
+		long seconds = uptimeSeconds % 60;
+		long minutes = uptimeSeconds % 3600 / 60;
+		long hours = uptimeSeconds % 86400 / 3600;
+		long days = uptimeSeconds / 86400;
+
+		if (days > 0) {
+			normalizedUptime.append(days).append(" d ");
+		}
+		if (hours > 0) {
+			normalizedUptime.append(hours).append(" hr ");
+		}
+		if (minutes > 0) {
+			normalizedUptime.append(minutes).append(" min ");
+		}
+		if (seconds > 0 || normalizedUptime.length() == 0) {
+			normalizedUptime.append(seconds).append(" sec");
+		}
+		return normalizedUptime.toString().trim();
 	}
 
 	/**

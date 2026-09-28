@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2024 AVI-SPL, Inc. All Rights Reserved.
+ *  Copyright (c) 2024-2026 AVI-SPL, Inc. All Rights Reserved.
  */
 package com.avispl.symphony.dal.logitech.collabos;
 
@@ -14,6 +14,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.Map;
@@ -42,6 +43,7 @@ import com.github.tomakehurst.wiremock.stubbing.Scenario;
  * {@link LogitechCollabOsCommunicator#doGet(String, Class)}.
  *
  * @author Kevin / Symphony Dev Team<br>
+ * @author Maksym Rossiitsev / Symphony Dev Team<br>
  * Created on 5/9/2024
  * @since 1.0.0
  */
@@ -98,7 +100,7 @@ public class LogitechCollabOsCommunicatorTest {
 	void testGetMultipleStatisticsPropertyCount() throws Exception {
 		stubHappyPath();
 		Map<String, String> statistics = extractProps(communicator.getMultipleStatistics());
-		assertEquals(23, statistics.size());
+		assertEquals(28, statistics.size());
 	}
 
 	@Test
@@ -115,6 +117,17 @@ public class LogitechCollabOsCommunicatorTest {
 		assertEquals("BYOD", statistics.get("ServiceProvider"));
 		assertEquals("RallyBarM-KD0T2", statistics.get("SystemName"));
 		assertEquals("44:73:d6:ee:bd:de", statistics.get("WifiMAC"));
+	}
+
+	@Test
+	void testAdapterMetadata() throws Exception {
+		stubHappyPath();
+		Map<String, String> statistics = extractProps(communicator.getMultipleStatistics());
+		assertTrue(statistics.get("AdapterMetadata#AdapterVersion").matches("\\d+\\.\\d+\\.\\d+.*"));
+		assertTrue(statistics.get("AdapterMetadata#AdapterBuildDate").matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z"));
+		assertTrue(statistics.get("AdapterMetadata#AdapterUptime").matches("(\\d+ (d|hr|min|sec) ?)+"));
+		assertEquals("0", statistics.get("AdapterMetadata#AdapterUptime(min)"));
+		assertEquals(String.valueOf(communicator.getMonitoringRate()), statistics.get("AdapterMetadata#MonitoringCycleInterval(min)"));
 	}
 
 	@Test
@@ -185,6 +198,8 @@ public class LogitechCollabOsCommunicatorTest {
 	 * It is tolerated while the commands stay below {@link LogitechCollabOsCommunicator#setApiRetryAttempts(String)},
 	 * and then reported carrying the failure the device actually produced — a 401, so a {@link FailedLoginException} —
 	 * rather than the blanket ResourceNotReachableException the adapter used to invent. See SYAL-3257.
+	 *
+	 * @since 1.1.2
 	 */
 	@Test
 	void testTokenStillInvalidAfterRetryIsToleratedThenReported() throws Exception {
