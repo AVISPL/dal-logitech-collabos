@@ -29,7 +29,6 @@ import org.junit.jupiter.api.Test;
 
 import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.api.dal.dto.monitor.Statistics;
-import com.avispl.symphony.api.dal.error.ResourceNotReachableException;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
@@ -181,12 +180,21 @@ public class LogitechCollabOsCommunicatorTest {
 		verify(2, getRequestedFor(urlEqualTo(DEVICE_INFO_URI)));
 	}
 
+	/**
+	 * A token the device keeps rejecting even after a fresh sign in is a failure of every monitoring command.
+	 * It is tolerated while the commands stay below {@link LogitechCollabOsCommunicator#setApiRetryAttempts(String)},
+	 * and then reported carrying the failure the device actually produced — a 401, so a {@link FailedLoginException} —
+	 * rather than the blanket ResourceNotReachableException the adapter used to invent. See SYAL-3257.
+	 */
 	@Test
-	void testTokenStillInvalidAfterRetryPropagatesAsResourceNotReachable() throws Exception {
+	void testTokenStillInvalidAfterRetryIsToleratedThenReported() throws Exception {
 		stubSignIn("token-1");
 		stubFor(get(urlPathMatching("/api/v1/.*")).willReturn(aResponse().withStatus(401)));
 
-		assertThrows(ResourceNotReachableException.class, () -> communicator.getMultipleStatistics());
+		communicator.getMultipleStatistics();
+		communicator.getMultipleStatistics();
+
+		assertThrows(FailedLoginException.class, () -> communicator.getMultipleStatistics());
 	}
 
 	@Test
