@@ -11,10 +11,10 @@ This repository is dedicated to Symphony's Device Adapter Library (DAL) for the 
 * CollabOSVersion
 * DeviceConfiguration
 * EthernetMAC
-* HwVersion
+* HWVersion
 * ModelName
 * SerialNumber
 * SystemName
-* WifiMAC
+* WiFiMAC
 * DeviceName
 * ServiceProvider

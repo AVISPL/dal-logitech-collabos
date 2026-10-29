@@ -111,12 +111,12 @@ public class LogitechCollabOsCommunicatorTest {
 		assertEquals("DEVICE", statistics.get("DeviceConfiguration"));
 		assertEquals("Rally Bar Mini", statistics.get("DeviceName"));
 		assertEquals("44:73:d6:ee:bd:df", statistics.get("EthernetMAC"));
-		assertEquals("4.4", statistics.get("HwVersion"));
+		assertEquals("4.4", statistics.get("HWVersion"));
 		assertEquals("VR0020", statistics.get("ModelName"));
 		assertEquals("2346FD2KD0T2", statistics.get("SerialNumber"));
 		assertEquals("BYOD", statistics.get("ServiceProvider"));
 		assertEquals("RallyBarM-KD0T2", statistics.get("SystemName"));
-		assertEquals("44:73:d6:ee:bd:de", statistics.get("WifiMAC"));
+		assertEquals("44:73:d6:ee:bd:de", statistics.get("WiFiMAC"));
 	}
 
 	@Test
@@ -143,8 +143,8 @@ public class LogitechCollabOsCommunicatorTest {
 		stubHappyPath();
 		Map<String, String> statistics = extractProps(communicator.getMultipleStatistics());
 		assertEquals("IDLE", statistics.get("DeviceInsights#DeviceState"));
-		assertEquals("UNMUTED", statistics.get("DeviceInsights#MicState"));
-		assertEquals("10", statistics.get("DeviceInsights#SpeakerMaxVolume"));
+		assertEquals("UNMUTED", statistics.get("DeviceInsights#MicrophoneState"));
+		assertEquals("10", statistics.get("DeviceInsights#SpeakerMaximumVolume"));
 		assertEquals("UNMUTED", statistics.get("DeviceInsights#SpeakerState"));
 		assertEquals("8", statistics.get("DeviceInsights#SpeakerVolume"));
 	}

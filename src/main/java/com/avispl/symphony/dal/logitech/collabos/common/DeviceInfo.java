@@ -12,26 +12,29 @@ package com.avispl.symphony.dal.logitech.collabos.common;
  * @since 1.1.0
  */
 public enum DeviceInfo {
-	COLLAB_VERSION("collabOSVersion"),
-	DEVICE_NAME("deviceName"),
-	ETHERNET_MAC("ethernetMAC"),
-	HW_VERSION("hwVersion"),
-	MODEL_NAME("modelName"),
-	SERIAL_NUMBER("serialNumber"),
-	SERVICE_PROVIDER("serviceProvider"),
-	SYSTEM_NAME("systemName"),
-	WIFI_MAC("wifiMAC"),
-	DEVICE_CONFIGURATION("deviceConfiguration"),
+	COLLAB_VERSION("collabOSVersion", "CollabOSVersion"),
+	DEVICE_NAME("deviceName", "DeviceName"),
+	ETHERNET_MAC("ethernetMAC", "EthernetMAC"),
+	HW_VERSION("hwVersion", "HWVersion"),
+	MODEL_NAME("modelName", "ModelName"),
+	SERIAL_NUMBER("serialNumber", "SerialNumber"),
+	SERVICE_PROVIDER("serviceProvider", "ServiceProvider"),
+	SYSTEM_NAME("systemName", "SystemName"),
+	WIFI_MAC("wifiMAC", "WiFiMAC"),
+	DEVICE_CONFIGURATION("deviceConfiguration", "DeviceConfiguration"),
 	;
 	private final String name;
+	private final String displayName;
 
 	/**
 	 * Constructor of DeviceInfo
 	 *
 	 * @param name is device info
+	 * @param displayName is the property name displayed in Symphony
 	 */
-	DeviceInfo(String name) {
+	DeviceInfo(String name, String displayName) {
 		this.name = name;
+		this.displayName = displayName;
 	}
 
 	/**
@@ -41,5 +44,14 @@ public enum DeviceInfo {
 	 */
 	public String getName() {
 		return name;
+	}
+
+	/**
+	 * Retrieves {@link #displayName}
+	 *
+	 * @return value of {@link #displayName}
+	 */
+	public String getDisplayName() {
+		return displayName;
 	}
 }

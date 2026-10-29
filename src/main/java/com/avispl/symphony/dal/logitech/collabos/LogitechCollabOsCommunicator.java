@@ -45,11 +45,11 @@ import com.avispl.symphony.dal.util.StringUtils;
  * CollabOSVersion
  * DeviceConfiguration
  * EthernetMAC
- * HwVersion
+ * HWVersion
  * ModelName
  * SerialNumber
  * SystemName
- * WifiMAC
+ * WiFiMAC
  * DeviceName
  * ServiceProvider
  *
@@ -379,7 +379,7 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 			return;
 		}
 		for (DeviceInfo item : DeviceInfo.values()) {
-			cachedData.put(capitalizeFirstLetter(item.getName()), checkNullOrEmptyValue(results.get(item.getName())));
+			cachedData.put(item.getDisplayName(), checkNullOrEmptyValue(results.get(item.getName())));
 		}
 	}
 
@@ -392,11 +392,11 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 			return;
 		}
 		if (results.has(LogitechConstant.OCCUPANCY_COUNT)) {
-			cachedData.put(capitalizeFirstLetter(LogitechConstant.OCCUPANCY_COUNT), getDefaultValueForNullData(results.get(LogitechConstant.OCCUPANCY_COUNT).asText()));
+			cachedData.put(InsightInfo.OCCUPANCY_COUNT.getDisplayName(), getDefaultValueForNullData(results.get(LogitechConstant.OCCUPANCY_COUNT).asText()));
 		}
 
 		if (results.has(LogitechConstant.OCCUPANCY_MODE)) {
-			cachedData.put(capitalizeFirstLetter(LogitechConstant.OCCUPANCY_MODE), getDefaultValueForNullData(results.get(LogitechConstant.OCCUPANCY_MODE).asText()));
+			cachedData.put(InsightInfo.OCCUPANCY_MODE.getDisplayName(), getDefaultValueForNullData(results.get(LogitechConstant.OCCUPANCY_MODE).asText()));
 		}
 	}
 
@@ -414,7 +414,7 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 			}
 			String propertyName = item.getName();
 			if (results.has(propertyName)) {
-				cachedData.put(capitalizeFirstLetter(propertyName), getDefaultValueForNullData(results.get(propertyName).asText()));
+				cachedData.put(item.getDisplayName(), getDefaultValueForNullData(results.get(propertyName).asText()));
 			}
 		}
 	}
@@ -453,7 +453,7 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	 */
 	private void populateDeviceInfo(Map<String, String> stats) {
 		for (DeviceInfo item : DeviceInfo.values()) {
-			String propertyName = capitalizeFirstLetter(item.getName());
+			String propertyName = item.getDisplayName();
 			stats.put(propertyName, getDefaultValueForNullData(cachedData.get(propertyName)));
 		}
 	}
@@ -466,9 +466,9 @@ public class LogitechCollabOsCommunicator extends RestCommunicator implements Mo
 	private void populateInsightData(Map<String, String> stats) {
 		for (InsightInfo item : InsightInfo.values()) {
 			String group = item.getGroup();
-			String name = item.getName();
-			if (cachedData.get(capitalizeFirstLetter(name)) != null) {
-				stats.put(group + "#" + capitalizeFirstLetter(name), getDefaultValueForNullData(cachedData.get(capitalizeFirstLetter(name))));
+			String name = item.getDisplayName();
+			if (cachedData.get(name) != null) {
+				stats.put(group + "#" + name, getDefaultValueForNullData(cachedData.get(name)));
 			}
 		}
 	}
