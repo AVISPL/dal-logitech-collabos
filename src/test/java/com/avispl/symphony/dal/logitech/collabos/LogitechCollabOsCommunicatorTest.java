@@ -144,7 +144,7 @@ public class LogitechCollabOsCommunicatorTest {
 		Map<String, String> statistics = extractProps(communicator.getMultipleStatistics());
 		assertEquals("IDLE", statistics.get("DeviceInsights#DeviceState"));
 		assertEquals("UNMUTED", statistics.get("DeviceInsights#MicrophoneState"));
-		assertEquals("10", statistics.get("DeviceInsights#SpeakerMaxVolume"));
+		assertEquals("10", statistics.get("DeviceInsights#SpeakerMaximumVolume"));
 		assertEquals("UNMUTED", statistics.get("DeviceInsights#SpeakerState"));
 		assertEquals("8", statistics.get("DeviceInsights#SpeakerVolume"));
 	}

@@ -96,7 +96,7 @@ public class LogitechCollabOsCommunicatorIntegrationTest {
 		Assert.assertEquals("IDLE", statistics.get("DeviceInsights#DeviceState"));
 		Assert.assertEquals("UNMUTED", statistics.get("DeviceInsights#MicrophoneState"));
 		Assert.assertEquals("UNMUTED", statistics.get("DeviceInsights#SpeakerState"));
-		Assert.assertEquals("10", statistics.get("DeviceInsights#SpeakerMaxVolume"));
+		Assert.assertEquals("10", statistics.get("DeviceInsights#SpeakerMaximumVolume"));
 		Assert.assertEquals("10", statistics.get("DeviceInsights#SpeakerVolume"));
 	}
 }

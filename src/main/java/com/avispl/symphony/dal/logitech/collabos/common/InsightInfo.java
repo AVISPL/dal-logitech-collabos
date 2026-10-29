@@ -16,7 +16,7 @@ public enum InsightInfo {
 	OCCUPANCY_MODE("occupancyMode", "OccupancyMode", "RoomInsights"),
 	DEVICE_STATUS("deviceState", "DeviceState", "DeviceInsights"),
 	MIC_STATE("micState", "MicrophoneState", "DeviceInsights"),
-	SPEAKER_MAX_VOLUME("speakerMaxVolume", "SpeakerMaxVolume", "DeviceInsights"),
+	SPEAKER_MAX_VOLUME("speakerMaxVolume", "SpeakerMaximumVolume", "DeviceInsights"),
 	SPEAKER_STATE("speakerState", "SpeakerState", "DeviceInsights"),
 	SPEAKER_VOLUME("speakerVolume", "SpeakerVolume", "DeviceInsights"),
 	;
