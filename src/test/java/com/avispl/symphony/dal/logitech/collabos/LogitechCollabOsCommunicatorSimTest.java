@@ -1,3 +1,6 @@
+/*
+ *  Copyright (c) 2026 AVI-SPL, Inc. All Rights Reserved.
+ */
 package com.avispl.symphony.dal.logitech.collabos;
 
 import java.net.URI;
@@ -49,7 +52,7 @@ import com.avispl.symphony.api.dal.error.CommandFailureException;
  *
  * @author Maksym Rossiitsev / Symphony Dev Team<br>
  * Created on 9/21/2026
- * @since 1.1.1
+ * @since 1.1.2
  */
 public class LogitechCollabOsCommunicatorSimTest {
 
