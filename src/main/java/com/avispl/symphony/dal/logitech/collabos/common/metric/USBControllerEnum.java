@@ -15,8 +15,8 @@ public enum USBControllerEnum {
 	NAME("name", "Name"),
 	MANUFACTURER("manufacturer", "Manufacturer"),
 	FIRMWARE_VERSION("firmwareVersion", "FirmwareVersion"),
-	SW_MCU_VERSION("swMcuVersion", "SoftwareMcuVersion"),
-	HW_MCU_VERSION("hwMcuVersion", "HardwareMcuVersion"),
+	SW_MCU_VERSION("swMcuVersion", "SoftwareMCUVersion"),
+	HW_MCU_VERSION("hwMcuVersion", "HardwareMCUVersion"),
 	HDMI_VERSION("hdmiVersion", "HDMIVersion"),
 	ORIENTATION("orientation", "Orientation"),
 	;

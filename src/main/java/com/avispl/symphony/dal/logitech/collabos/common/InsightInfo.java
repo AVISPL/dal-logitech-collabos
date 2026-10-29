@@ -12,25 +12,28 @@ package com.avispl.symphony.dal.logitech.collabos.common;
  * @since 1.0.0
  */
 public enum InsightInfo {
-	OCCUPANCY_COUNT("occupancyCount", "RoomInsights"),
-	OCCUPANCY_MODE("occupancyMode", "RoomInsights"),
-	DEVICE_STATUS("deviceState", "DeviceInsights"),
-	MIC_STATE("micState", "DeviceInsights"),
-	SPEAKER_MAX_VOLUME("speakerMaxVolume", "DeviceInsights"),
-	SPEAKER_STATE("speakerState", "DeviceInsights"),
-	SPEAKER_VOLUME("speakerVolume", "DeviceInsights"),
+	OCCUPANCY_COUNT("occupancyCount", "OccupancyCount", "RoomInsights"),
+	OCCUPANCY_MODE("occupancyMode", "OccupancyMode", "RoomInsights"),
+	DEVICE_STATUS("deviceState", "DeviceState", "DeviceInsights"),
+	MIC_STATE("micState", "MicrophoneState", "DeviceInsights"),
+	SPEAKER_MAX_VOLUME("speakerMaxVolume", "SpeakerMaxVolume", "DeviceInsights"),
+	SPEAKER_STATE("speakerState", "SpeakerState", "DeviceInsights"),
+	SPEAKER_VOLUME("speakerVolume", "SpeakerVolume", "DeviceInsights"),
 	;
 	private final String name;
+	private final String displayName;
 	private final String group;
 
 	/**
 	 * Constructor of InsightInfo
 	 *
 	 * @param name is device info
+	 * @param displayName is the property name displayed in Symphony
 	 * @param group is group of insight
 	 */
-	InsightInfo(String name, String group) {
+	InsightInfo(String name, String displayName, String group) {
 		this.name = name;
+		this.displayName = displayName;
 		this.group = group;
 	}
 
@@ -41,6 +44,15 @@ public enum InsightInfo {
 	 */
 	public String getName() {
 		return name;
+	}
+
+	/**
+	 * Retrieves {@link #displayName}
+	 *
+	 * @return value of {@link #displayName}
+	 */
+	public String getDisplayName() {
+		return displayName;
 	}
 
 	/**
